@@ -1,0 +1,6 @@
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [N]> notice
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [W]> warning
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [E]> error
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [A]> alert
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [C]> critical
+[ 6856]14:54:38 testing.go:1446(testing.tRunner) [M]> emergency

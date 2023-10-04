@@ -41,7 +41,7 @@ var levelNames = [...]string{"emergency", "alert", "critical", "error", "warning
 //	"daily":true,
 //	"maxDays":15,
 //	"rotate":true,
-//  	"perm":0600,
+//  "perm":0600,
 //	"separate":["emergency", "alert", "critical", "error", "warning", "notice", "info", "debug"],
 //	}
 
@@ -107,8 +107,16 @@ func (f *multiFileLogWriter) Flush() {
 }
 
 // newFilesWriter create a FileLogWriter returning as LoggerInterface.
-func newFilesWriter() Logger {
+func newFilesWriter() ILogger {
 	return &multiFileLogWriter{}
+}
+
+func (w *multiFileLogWriter) SetLevel(l int) {
+	for i := 0; i < len(w.writers); i++ {
+		if w.writers[i] != nil {
+			w.writers[i].Level = l
+		}
+	}
 }
 
 func init() {

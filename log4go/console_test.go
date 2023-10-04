@@ -33,10 +33,12 @@ func testConsoleCalls(bl *TLogger) {
 // Test console logging by visually comparing the lines being output with and
 // without a log level specification.
 func TestConsole(t *testing.T) {
+	t.Log("日志级别 > 0")
 	log1 := NewLogger(10000)
 	log1.SetLogger("console", "")
 	testConsoleCalls(log1)
 
+	t.Log("日志级别 > 3")
 	log2 := NewLogger(100)
 	log2.SetLogger("console", `{"level":3}`)
 	testConsoleCalls(log2)
@@ -44,6 +46,7 @@ func TestConsole(t *testing.T) {
 
 // Test console without color
 func TestConsoleNoColor(t *testing.T) {
+	t.Log("日志无颜色")
 	log := NewLogger(100)
 	log.SetLogger("console", `{"color":false}`)
 	testConsoleCalls(log)

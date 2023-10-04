@@ -34,7 +34,7 @@ type connWriter struct {
 }
 
 // NewConn create new ConnWrite returning as LoggerInterface.
-func NewConn() Logger {
+func NewConn() ILogger {
 	conn := new(connWriter)
 	conn.Level = LevelNotice
 	return conn
@@ -63,7 +63,7 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 		defer c.innerWriter.Close()
 	}
 
-	c.lg.println(when, msg)
+	//c.lg.println(when, msg)
 	return nil
 }
 
@@ -110,6 +110,10 @@ func (c *connWriter) needToConnectOnMsg() bool {
 	}
 
 	return c.ReconnectOnMsg
+}
+
+func (w *connWriter) SetLevel(l int) {
+	w.Level = l
 }
 
 func init() {

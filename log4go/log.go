@@ -24,18 +24,17 @@
 //
 // Use it like this:
 //
-//	log.Trace("trace")
-//	log.Info("info")
-//	log.Warn("warning")
-//	log.Debug("debug")
-//	log.Critical("critical")
+//		log.Trace("trace")
+//		log.Info("info")
+//		log.Warn("warning")
+//		log.Debug("debug")
+//		log.Critical("critical")
 //
-//  more docs http://beego.me/docs/module/logs.md
+//	 more docs http://beego.me/docs/module/logs.md
 package logs
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path"
 	"runtime"
@@ -74,12 +73,12 @@ const (
 	AdapterSlack     = "slack"
 )
 
-type newLoggerFunc func() Logger
+type newLoggerFunc func() ILogger
 
 // Logger defines the behavior of a log provider.
-type Logger interface {
+type ILogger interface {
 	Init(config string) error
-	//WriteMsg(when time.Time, msg string, level int) error
+	SetLevel(l int)
 	WriteMsg(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) error
 	Destroy()
 	Flush()
@@ -94,10 +93,10 @@ var levelName = [LevelDebug + 2]string{"事故[M]", "警报[A]", "危险[C]", "�
 // it panics.
 func Register(name string, log newLoggerFunc) {
 	if log == nil {
-		panic("logs: Register provide is nil")
+		panic("日志注册失败，没有日志处理器。")
 	}
 	if _, dup := adapters[name]; dup {
-		panic("logs: Register called twice for provider " + name)
+		panic("日志注册失败，已经注册过（" + name + "）")
 	}
 	adapters[name] = log
 }
@@ -109,9 +108,9 @@ type TLogger struct {
 	level               int
 	init                bool
 	loggerFuncCallDepth int
-	asynchronous        bool
+	Async_flag          bool
 	msgChanLen          int64
-	msgChan             chan *logMsg
+	msgChan             chan *tLogMsg
 	signalChan          chan string
 	wg                  sync.WaitGroup
 	outputs             []*nameLogger
@@ -119,14 +118,14 @@ type TLogger struct {
 	lastTime            time.Time
 }
 
-const defaultAsyncMsgLen = 1e3
+const defAsyncMsgLen = 1e3
 
 type nameLogger struct {
-	Logger
+	ILogger
 	name string
 }
 
-type logMsg struct {
+type tLogMsg struct {
 	fileName  string
 	fileLine  int
 	callFunc  string
@@ -139,6 +138,7 @@ type logMsg struct {
 var logMsgPool *sync.Pool
 var time_local *time.Location = nil
 
+// 获取当前时间
 func GetNow() (result time.Time) {
 	defer func() {
 		if info := recover(); info != nil {
@@ -161,7 +161,7 @@ func NewLogger(channelLens ...int64) *TLogger {
 	bl.loggerFuncCallDepth = 4
 	bl.msgChanLen = append(channelLens, 0)[0]
 	if bl.msgChanLen <= 0 {
-		bl.msgChanLen = defaultAsyncMsgLen
+		bl.msgChanLen = defAsyncMsgLen
 	}
 	bl.signalChan = make(chan string, 1)
 	bl.setLogger(AdapterConsole)
@@ -172,17 +172,19 @@ func NewLogger(channelLens ...int64) *TLogger {
 func (bl *TLogger) Async(msgLen ...int64) *TLogger {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
-	if bl.asynchronous {
+
+	if bl.Async_flag {
 		return bl
 	}
-	bl.asynchronous = true
+
+	bl.Async_flag = true
 	if len(msgLen) > 0 && msgLen[0] > 0 {
 		bl.msgChanLen = msgLen[0]
 	}
-	bl.msgChan = make(chan *logMsg, bl.msgChanLen)
+	bl.msgChan = make(chan *tLogMsg, bl.msgChanLen)
 	logMsgPool = &sync.Pool{
 		New: func() interface{} {
-			return &logMsg{}
+			return &tLogMsg{}
 		},
 	}
 	bl.wg.Add(1)
@@ -192,34 +194,10 @@ func (bl *TLogger) Async(msgLen ...int64) *TLogger {
 
 // SetLogger provides a given logger adapter into BeeLogger with config string.
 // config need to be correct JSON as string: {"interval":360}.
-func (bl *TLogger) setLogger(adapterName string, configs ...string) error {
-	config := append(configs, "{}")[0]
-	for _, l := range bl.outputs {
-		if l.name == adapterName {
-			return fmt.Errorf("logs: duplicate adaptername %q (you have set this logger before)", adapterName)
-		}
-	}
-
-	log, ok := adapters[adapterName]
-	if !ok {
-		return fmt.Errorf("logs: unknown adaptername %q (forgotten Register?)", adapterName)
-	}
-
-	lg := log()
-	err := lg.Init(config)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "logs.BeeLogger.SetLogger: "+err.Error())
-		return err
-	}
-	bl.outputs = append(bl.outputs, &nameLogger{name: adapterName, Logger: lg})
-	return nil
-}
-
-// SetLogger provides a given logger adapter into BeeLogger with config string.
-// config need to be correct JSON as string: {"interval":360}.
 func (bl *TLogger) SetLogger(adapterName string, configs ...string) error {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
+
 	if !bl.init {
 		bl.outputs = []*nameLogger{}
 		bl.init = true
@@ -227,32 +205,54 @@ func (bl *TLogger) SetLogger(adapterName string, configs ...string) error {
 	return bl.setLogger(adapterName, configs...)
 }
 
+// SetLogger provides a given logger adapter into BeeLogger with config string.
+// config need to be correct JSON as string: {"interval":360}.
+func (bl *TLogger) setLogger(adapterName string, configs ...string) error {
+	config := append(configs, "{}")[0]
+	for _, l := range bl.outputs {
+		if l.name == adapterName {
+			return fmt.Errorf("重复的适配器名称（%s）", adapterName)
+		}
+	}
+
+	new_logger_func, ok := adapters[adapterName]
+	if !ok {
+		return fmt.Errorf("未知的适配器名称（%s）", adapterName)
+	}
+
+	lg := new_logger_func()
+	err := lg.Init(config)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "初始化日志实例错误（%s），%s\n", adapterName, err.Error())
+		return err
+	}
+	bl.outputs = append(bl.outputs,
+		&nameLogger{
+			name:    adapterName,
+			ILogger: lg,
+		})
+	return nil
+}
+
 // DelLogger remove a logger adapter in BeeLogger.
 func (bl *TLogger) DelLogger(adapterName string) error {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
-	outputs := []*nameLogger{}
+
+	newoutputs := []*nameLogger{}
 	for _, lg := range bl.outputs {
 		if lg.name == adapterName {
 			lg.Destroy()
 		} else {
-			outputs = append(outputs, lg)
+			newoutputs = append(newoutputs, lg)
 		}
 	}
-	if len(outputs) == len(bl.outputs) {
-		return fmt.Errorf("logs: unknown adaptername %q (forgotten Register?)", adapterName)
+	if len(newoutputs) == len(bl.outputs) {
+		return fmt.Errorf("删除日志处理器失败，未知的日志处理器（%s）。", adapterName)
 	}
-	bl.outputs = outputs
-	return nil
-}
+	bl.outputs = newoutputs
 
-func (bl *TLogger) writeToLoggers(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) {
-	for _, l := range bl.outputs {
-		err := l.WriteMsg(fileName, fileLine, callLevel, callFunc, logLevel, when, msg)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to WriteMsg to adapter:%v,error:%v\n", l.name, err)
-		}
-	}
+	return nil
 }
 
 func (bl *TLogger) Write(p []byte) (n int, err error) {
@@ -271,7 +271,49 @@ func (bl *TLogger) Write(p []byte) (n int, err error) {
 	return 0, err
 }
 
-//github.com/tea4go/application/myproxy/service.THTTP.StartServer
+func (bl *TLogger) writeMsg(logLevel int, msg string, v ...interface{}) error {
+	bl.lastTime = time.Now()
+
+	// 如果没有初始化，则初始化控制台日志
+	if !bl.init {
+		bl.lock.Lock()
+		bl.setLogger(AdapterConsole)
+		bl.lock.Unlock()
+	}
+
+	if len(v) > 0 {
+		msg = fmt.Sprintf(msg, v...)
+	}
+
+	when := GetNow()
+	callLevel, funcname, filename, line := bl.GetCallStack()
+	if bl.Async_flag {
+		lm := logMsgPool.Get().(*tLogMsg)
+		lm.fileName = filename
+		lm.fileLine = line
+		lm.callLevel = callLevel
+		lm.callFunc = funcname
+		lm.logLevel = logLevel
+		lm.when = when
+		lm.msg = msg
+		bl.msgChan <- lm
+	} else {
+		bl.writeToLoggers(filename, line, callLevel, funcname, logLevel, when, msg)
+	}
+	return nil
+}
+
+// 每个日志处理器，写入日志字符串
+func (bl *TLogger) writeToLoggers(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) {
+	for _, l := range bl.outputs {
+		err := l.WriteMsg(fileName, fileLine, callLevel, callFunc, logLevel, when, msg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "写入日志失败（%s），%s\n", l.name, err)
+		}
+	}
+}
+
+// github.com/tea4go/application/myproxy/service.THTTP.StartServer
 func (bl *TLogger) GetClassName(func_name string) string {
 	result := ""
 	t1 := strings.Split(func_name, "/")
@@ -316,42 +358,15 @@ func (bl *TLogger) GetCallStack() (level int, stack string, file string, line in
 	return level - bl.loggerFuncCallDepth, bl.GetClassName(t1[len(t1)-1]), file, line
 }
 
-func (bl *TLogger) writeMsg(logLevel int, msg string, v ...interface{}) error {
-	bl.lastTime = time.Now()
-	if !bl.init {
-		bl.lock.Lock()
-		bl.setLogger(AdapterConsole)
-		bl.lock.Unlock()
-	}
-
-	if len(v) > 0 {
-		msg = fmt.Sprintf(msg, v...)
-	}
-
-	when := GetNow()
-	callLevel, funcname, filename, line := bl.GetCallStack()
-	if bl.asynchronous {
-		lm := logMsgPool.Get().(*logMsg)
-		lm.logLevel = logLevel
-		lm.fileName = filename
-		lm.fileLine = line
-		lm.callFunc = funcname
-		lm.callLevel = callLevel
-		lm.msg = msg
-		lm.when = when
-		bl.msgChan <- lm
-	} else {
-		bl.writeToLoggers(filename, line, callLevel, funcname, logLevel, when, msg)
-	}
-	return nil
-}
-
 // SetLevel Set log message level.
 // If message level (such as LevelDebug) is higher than logger level (such as LevelWarning),
 // log providers will not even be sent the message.
 func (bl *TLogger) SetLevel(l int) {
 	if l <= LevelDebug && l >= LevelEmergency {
 		bl.level = l
+		for _, ll := range bl.outputs {
+			ll.SetLevel(l)
+		}
 	} else {
 		fmt.Println("设置日志级别失败！")
 	}
@@ -492,7 +507,7 @@ func (bl *TLogger) End() {
 
 // Flush flush all chan data.
 func (bl *TLogger) Flush() {
-	if bl.asynchronous {
+	if bl.Async_flag {
 		bl.signalChan <- "flush"
 		bl.wg.Wait()
 		bl.wg.Add(1)
@@ -503,7 +518,7 @@ func (bl *TLogger) Flush() {
 
 // Close close logger, flush all chan data and destroy all adapters in BeeLogger.
 func (bl *TLogger) Close() {
-	if bl.asynchronous {
+	if bl.Async_flag {
 		bl.signalChan <- "close"
 		bl.wg.Wait()
 		close(bl.msgChan)
@@ -527,7 +542,7 @@ func (bl *TLogger) Reset() {
 }
 
 func (bl *TLogger) flush() {
-	if bl.asynchronous {
+	if bl.Async_flag {
 		for {
 			if len(bl.msgChan) > 0 {
 				bm := <-bl.msgChan
@@ -550,36 +565,6 @@ var gLogger *TLogger = NewLogger()
 func InitGLogger(level int) *TLogger {
 	gLogger.SetLevel(level)
 	return gLogger
-}
-
-var beeLoggerMap = struct {
-	sync.RWMutex
-	logs map[string]*log.Logger
-}{
-	logs: map[string]*log.Logger{},
-}
-
-// GetLogger returns the default BeeLogger
-func GetLogger(prefixes ...string) *log.Logger {
-	prefix := append(prefixes, "")[0]
-	if prefix != "" {
-		prefix = fmt.Sprintf(`[%s] `, strings.ToUpper(prefix))
-	}
-	beeLoggerMap.RLock()
-	l, ok := beeLoggerMap.logs[prefix]
-	if ok {
-		beeLoggerMap.RUnlock()
-		return l
-	}
-	beeLoggerMap.RUnlock()
-	beeLoggerMap.Lock()
-	defer beeLoggerMap.Unlock()
-	l, ok = beeLoggerMap.logs[prefix]
-	if !ok {
-		l = log.New(gLogger, prefix, 0)
-		beeLoggerMap.logs[prefix] = l
-	}
-	return l
 }
 
 // Reset will remove all the adapter

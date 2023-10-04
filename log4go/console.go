@@ -63,17 +63,17 @@ var colors = []brush{
 
 // consoleWriter implements LoggerInterface and writes messages to terminal.
 type consoleWriter struct {
-	lg       *logWriter
-	Level    int  `json:"level"`
-	Colorful bool `json:"color"` //this filed is useful only when system's terminal supports color
+	lgwi      *logWriter
+	Level     int  `json:"level"`
+	ColorFlag bool `json:"color"` //this filed is useful only when system's terminal supports color
 }
 
 // NewConsole create ConsoleWriter returning as LoggerInterface.
-func NewConsole() Logger {
+func NewConsole() ILogger {
 	cw := &consoleWriter{
-		lg:       newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout)),
-		Level:    LevelDebug,
-		Colorful: true, //runtime.GOOS != "windows",
+		lgwi:      newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout)),
+		Level:     LevelDebug,
+		ColorFlag: true, //runtime.GOOS != "windows",
 	}
 	return cw
 }
@@ -88,30 +88,23 @@ func (c *consoleWriter) Init(jsonConfig string) error {
 	return err
 }
 
-//打印内容：
-//server.go:192            [N]> ==>网络协议： udp
-func (c *consoleWriter) printlnConsole(color bool, fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) {
-	h := msg + "\n"
-	if logLevel != LevelPrint {
-		head := fmt.Sprintf("(%s:%d)", fileName, fileLine)
-		h = fmt.Sprintf("%s %-25s %s> %s\n", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
-	}
-	if color {
-		h = colors[logLevel](h)
-	}
-
-	c.lg.writer.Write([]byte(h))
-}
-
-// WriteMsg write message in console.
+// 打印内容：
+// server.go:192            [N]> ==>网络协议： udp
 func (c *consoleWriter) WriteMsg(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) error {
 	if (logLevel > c.Level) && (logLevel != LevelPrint) {
 		return nil
 	}
 
-	c.printlnConsole(c.Colorful, fileName, fileLine, callLevel, callFunc, logLevel, when, msg)
+	h := msg + "\n"
+	if logLevel != LevelPrint {
+		head := fmt.Sprintf("(%s:%d)", fileName, fileLine)
+		h = fmt.Sprintf("%s %-25s %s> %s\n", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
+	}
+	if c.ColorFlag {
+		h = colors[logLevel](h)
+	}
 
-	//c.lg.printlnWithoutWhen(msg)
+	c.lgwi.wi.Write([]byte(h))
 	return nil
 }
 
@@ -123,6 +116,10 @@ func (c *consoleWriter) Destroy() {
 // Flush implementing method. empty.
 func (c *consoleWriter) Flush() {
 
+}
+
+func (w *consoleWriter) SetLevel(l int) {
+	w.Level = l
 }
 
 func init() {

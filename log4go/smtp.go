@@ -36,12 +36,13 @@ type SMTPWriter struct {
 }
 
 // NewSMTPWriter create smtp writer.
-func newSMTPWriter() Logger {
+func newSMTPWriter() ILogger {
 	return &SMTPWriter{Level: LevelNotice}
 }
 
 // Init smtp writer with json config.
 // config like:
+//
 //	{
 //		"username":"example@gmail.com",
 //		"password:"password",
@@ -153,6 +154,10 @@ func (s *SMTPWriter) Flush() {
 // Destroy implementing method. empty.
 func (s *SMTPWriter) Destroy() {
 	return
+}
+
+func (w *SMTPWriter) SetLevel(l int) {
+	w.Level = l
 }
 
 func init() {
