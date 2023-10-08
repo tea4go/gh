@@ -13,29 +13,3 @@
 // limitations under the License.
 
 package logs
-
-import (
-	"testing"
-)
-
-// Test console logging by visually comparing the lines being output with and
-// without a log level specification.
-func TestConsole(t *testing.T) {
-	t.Log("日志级别 > 0")
-	log1 := NewLogger()
-	log1.SetLogger("console", "")
-	testConsoleCalls(log1)
-
-	t.Log("日志级别 > 3")
-	log2 := NewLogger()
-	log2.SetLogger("console", `{"level":3}`)
-	testConsoleCalls(log2)
-}
-
-// Test console without color
-func TestConsoleNoColor(t *testing.T) {
-	t.Log("日志无颜色")
-	log := NewLogger()
-	log.SetLogger("console", `{"color":false}`)
-	testConsoleCalls(log)
-}

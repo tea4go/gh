@@ -119,6 +119,13 @@ func (w *multiFileLogWriter) SetLevel(l int) {
 	}
 }
 
+func (w *multiFileLogWriter) GetLevel() int {
+	for i := 0; i < len(w.writers); i++ {
+		return w.writers[i].Level
+	}
+	return LevelNotice
+}
+
 func init() {
 	Register(AdapterMultiFile, newFilesWriter)
 }

@@ -160,6 +160,10 @@ func (w *SMTPWriter) SetLevel(l int) {
 	w.Level = l
 }
 
+func (w *SMTPWriter) GetLevel() int {
+	return w.Level
+}
+
 func init() {
 	Register(AdapterMail, newSMTPWriter)
 }

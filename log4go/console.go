@@ -81,6 +81,7 @@ func NewConsole() ILogger {
 // Init init console logger.
 // jsonConfig like '{"level":LevelTrace}'.
 func (c *consoleWriter) Init(jsonConfig string) error {
+	FDebug("InitLogger(console,%s) : %s", GetLevelName(c.Level), jsonConfig)
 	if len(jsonConfig) == 0 {
 		return nil
 	}
@@ -95,16 +96,19 @@ func (c *consoleWriter) WriteMsg(fileName string, fileLine int, callLevel int, c
 		return nil
 	}
 
-	h := msg + "\n"
+	if len(msg) > 0 && msg[len(msg)-1] == '\n' {
+		msg = msg[0 : len(msg)-1]
+	}
+	msg = msg + "\n"
 	if logLevel != LevelPrint {
 		head := fmt.Sprintf("(%s:%d)", fileName, fileLine)
-		h = fmt.Sprintf("%s %-25s %s> %s\n", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
+		msg = fmt.Sprintf("%s %-25s %s> %s", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
 	}
 	if c.ColorFlag {
-		h = colors[logLevel](h)
+		msg = colors[logLevel](msg)
 	}
 
-	c.lgwi.wi.Write([]byte(h))
+	c.lgwi.writeln(msg)
 	return nil
 }
 
@@ -120,6 +124,10 @@ func (c *consoleWriter) Flush() {
 
 func (w *consoleWriter) SetLevel(l int) {
 	w.Level = l
+}
+
+func (w *consoleWriter) GetLevel() int {
+	return w.Level
 }
 
 func init() {
