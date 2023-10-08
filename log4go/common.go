@@ -116,7 +116,7 @@ func GetParamBool(name string, flag_value bool) bool {
 	return flag_value
 }
 
-var IsDebug bool = true
+var IsDebug bool = false
 
 func FDebug(f string, v ...interface{}) {
 	if IsDebug {

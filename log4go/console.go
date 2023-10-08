@@ -44,8 +44,11 @@ type brush func(string) string
 func newBrush(color string) brush {
 	pre := "\033["
 	reset := "\033[0m"
-	return func(text string) string {
-		return pre + color + "m" + text + reset
+	return func(msg string) string {
+		if len(msg) > 0 && msg[len(msg)-1] == '\n' {
+			msg = msg[0 : len(msg)-1]
+		}
+		return pre + color + "m" + msg + reset + "\n"
 	}
 }
 
@@ -56,7 +59,7 @@ var colors = []brush{
 	newBrush("1;31"),    // Error              red
 	newBrush("1;33"),    // Warning            yellow
 	newBrush("1;32"),    // Notice             green
-	newBrush("1;34"),    // Info      blue
+	newBrush("1;34"),    // Info               blue
 	newBrush("1;37"),    // Debug              blue
 	newBrush("1;37"),    // Print              blue
 }
@@ -72,7 +75,7 @@ type consoleWriter struct {
 func NewConsole() ILogger {
 	cw := &consoleWriter{
 		lgwi:      newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout)),
-		Level:     LevelDebug,
+		Level:     LevelNotice,
 		ColorFlag: true, //runtime.GOOS != "windows",
 	}
 	return cw

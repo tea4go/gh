@@ -41,6 +41,11 @@ func SetLevel(l int) {
 	}
 }
 
+func SetLevel(l int) {
+	if l <= LevelDebug && l >= LevelEmergency {
+		gLogger.SetLevel(l)
+	}
+}
 func GetLevel(adapter ...string) int {
 	return gLogger.GetLevel(adapter...)
 }

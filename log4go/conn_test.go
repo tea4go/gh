@@ -42,25 +42,9 @@ func connTCPListener(t *testing.T, n int, ln net.Listener, connChan chan<- net.C
 	close(connChan)
 }
 
-func TestConn(t *testing.T) {
-	//t.SkipNow()
-	fmt.Println("================================================================================")
-	log := NewLogger()
-	log.SetLogFuncCallDepth(3)
-	log.Info("测试日志0（Info）")
-	fmt.Println("================================================================================")
-	log.SetLogger(AdapterConn, fmt.Sprintf(`{"net":"tcp","reconnect":true,"level":%d,"addr":"127.0.0.1:6002"}`, LevelDebug))
-
-	fmt.Println("================================================================================")
-	for i := 0; i < 100; i++ {
-		log.Info("测试日志 %04d（Info）", i)
-		time.Sleep(1 * time.Second)
-	}
-}
-
 // need to rewrite this test, it's not stable
 func TestReconnect(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	// Setup connection listener
 	newConns := make(chan net.Conn)
 	connNum := 2
@@ -74,7 +58,7 @@ func TestReconnect(t *testing.T) {
 
 	// Setup logger
 	log := NewLogger()
-	log.SetLogger(AdapterConn, fmt.Sprintf(`{"net":"tcp","reconnect":true,"level":%d,"addr":"127.0.0.1:6002"}`, LevelDebug))
+	log.SetLogger(AdapterConn, fmt.Sprintf(`{"net":"tcp","level":%d,"addr":"127.0.0.1:6002"}`, LevelDebug))
 	log.Info("测试日志A（Info）")
 
 	// Refuse first connection

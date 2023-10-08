@@ -17,7 +17,6 @@ package logs
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -29,11 +28,8 @@ import (
 type connWriter struct {
 	mu           sync.Mutex
 	lgconn       net.Conn
-	lgwi         *logWriter     //网络连接读写接口
-	lgwc         io.WriteCloser //网络连接关闭接口(网络连接如果需要关闭，只能通过这个，因为上面接口没有关闭功能）
 	conn_timeout time.Duration
 	rw_timeout   time.Duration
-	Reconnect    bool   `json:"reconnect"`
 	Net          string `json:"net"`
 	Addr         string `json:"addr"`
 	Level        int    `json:"level"`
@@ -54,25 +50,19 @@ func NewConn() ILogger {
 func (c *connWriter) connect() error {
 	FDebug("Connect() : 连接日志服务器(%s://%s)", c.Net, c.Addr)
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.lgwc != nil {
-		c.lgwc.Close()
-		c.lgwc = nil
-	}
+	c.Destroy()
 
 	conn, err := net.DialTimeout(c.Net, c.Addr, c.conn_timeout)
 	if err != nil {
 		return err
 	}
-
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetKeepAlive(true)
 	}
 
-	c.lgwc = conn
-	c.lgwi = newLogWriter(conn)
+	c.mu.Lock()
 	c.lgconn = conn
+	c.mu.Unlock()
 	return nil
 }
 
@@ -91,10 +81,10 @@ func (c *connWriter) Init(jsonConfig string) error {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			if c.lgwi == nil {
+			if c.lgconn == nil {
 				c.connect()
 			} else {
-				_, err := c.lgwi.writeln("{HeartBeat}\n")
+				err := c.writeMsgByConn("{HeartBeat}\n")
 				if err != nil {
 					c.connect()
 				}
@@ -105,8 +95,13 @@ func (c *connWriter) Init(jsonConfig string) error {
 	return nil
 }
 
-// WriteMsg write message in connection.
-// if connection is down, try to re-connect.
+func (c *connWriter) writeMsgByConn(msg string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	_, err := c.lgconn.Write([]byte(msg))
+	return err
+}
+
 func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) error {
 	if logLevel > c.Level {
 		return nil
@@ -123,15 +118,9 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 	if c.ColorFlag {
 		msg = colors[logLevel](msg)
 	}
-	fmt.Printf("%s", msg)
-	//c.lgconn.SetDeadline(time.Now().Add(c.rw_timeout))
-	//fmt.Println(c.lgconn.Write([]byte(h)))
-	//c.lgwc.SetDeadline(time.Now().Add(c.rw_timeout))
-	//fmt.Println(c.lgwi.writeln(h))
-	if c.lgwi != nil {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		_, err := c.lgconn.Write([]byte(msg))
+
+	if c.lgconn != nil {
+		err := c.writeMsgByConn(msg)
 		if err != nil {
 			c.Destroy()
 		}
@@ -146,9 +135,11 @@ func (c *connWriter) Flush() {
 
 // Destroy destroy connection writer and close tcp listener.
 func (c *connWriter) Destroy() {
-	if c.lgwc != nil {
-		c.lgwc.Close()
-		c.lgwc = nil
+	if c.lgconn != nil {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		c.lgconn.Close()
+		c.lgconn = nil
 	}
 }
 

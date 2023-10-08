@@ -58,7 +58,7 @@ func NewLogger(channelLens ...int64) *TLogger {
 	}
 	bl.signalChan = make(chan string, 1)
 	bl.init_flag = true
-	//bl.setLogger(AdapterConsole, `{"color":false}`)
+	bl.setLogger(AdapterConsole)
 	return bl
 }
 
@@ -271,6 +271,10 @@ func (bl *TLogger) SetLevel(l int) {
 	} else {
 		FDebug("设置日志级别失败！")
 	}
+}
+
+func (bl *TLogger) SetFDebug(l bool) {
+	IsDebug = l
 }
 
 func (bl *TLogger) GetLevel(adapters ...string) int {
