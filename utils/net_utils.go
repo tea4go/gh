@@ -20,6 +20,20 @@ func GetStatusCode(resp *http.Response) int {
 	}
 }
 
+func IsAddrInUse(err error) bool {
+	opErr, ok := err.(*net.OpError)
+	if !ok {
+		return false
+	}
+
+	// 端口被占用错误的错误码是 "address already in use"
+	if opErr.Err.Error() == "address already in use" {
+		return true
+	}
+
+	return false
+}
+
 func GetNetError(err error) string {
 	if err == io.EOF {
 		return "网络主动断开"
@@ -37,7 +51,9 @@ func GetNetError(err error) string {
 
 	opErr, ok := netErr.(*net.OpError)
 	if ok {
-
+		if opErr.Err.Error() == "address already in use" {
+			return "端口已经占用"
+		}
 		switch t := opErr.Err.(type) {
 		case *net.DNSError:
 			return "域名解析错误"
