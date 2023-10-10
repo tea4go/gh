@@ -30,7 +30,9 @@ func IsAddrInUse(err error) bool {
 	if opErr.Err.Error() == "address already in use" {
 		return true
 	}
-
+	if strings.Contains(err.Error(), "Only one usage of each") {
+		return true
+	}
 	return false
 }
 
