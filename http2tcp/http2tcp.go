@@ -86,7 +86,11 @@ func (c *TClient) Server(listen string, ctype, to string) {
 
 	lis, err := net.Listen("tcp", listen)
 	if err != nil {
-		logs.Error("本地监听失败，%s", err.Error())
+		if utils.IsAddrInUse(err) {
+			logs.Error("本地监听失败，端口已经被占用。")
+		} else {
+			logs.Error("本地监听失败，%s", err.Error())
+		}
 		return
 	}
 
