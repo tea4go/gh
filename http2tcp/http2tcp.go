@@ -126,7 +126,7 @@ func (c *TClient) connectServer(clientConn net.Conn, ctype, value string) error 
 	readdr := clientConn.RemoteAddr()
 	u, err := url.Parse(c.server)
 	if err != nil {
-		return fmt.Errorf("解析服务器地址失败(%s)，", c.server, err.Error())
+		return fmt.Errorf("解析服务器地址失败(%s)，%s", c.server, err.Error())
 	}
 	host := u.Hostname()
 	port := u.Port()
@@ -299,7 +299,7 @@ func (s *TServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	if s.auth(r) == false {
+	if !s.auth(r) {
 		code = http.StatusUnauthorized
 		time.Sleep(5 * time.Second)
 		msg = "鉴权不成功！"
@@ -425,7 +425,7 @@ func (s *TServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		code = http.StatusBadRequest
-		msg = fmt.Sprintf(`请求未知动作！`)
+		msg = `请求未知动作！`
 		return
 	}
 	defer func() {
