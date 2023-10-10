@@ -43,75 +43,66 @@ type IStdReadWriter struct {
 	io.Writer
 }
 
-func (c *TClient) Proxy(name, to string) {
+func (c *TClient) Proxy(name, to string) error {
 	if to == "" {
-		logs.Error("建立本地代理连接失败，请传入本地代理地址！")
-		return
+		return fmt.Errorf("建立本地代理连接失败，请传入本地代理地址！")
 	}
-	logs.Notice("")
-	logs.Notice("建立本地代理连接(%s) ...... %s", name, to)
+
 	conn, err := net.DialTimeout(`tcp`, to, ConnectTimeout*time.Second)
 	if err != nil {
-		logs.Error("建立本地代理连接(%s)失败，%s", to, err.Error())
-		return
+		return fmt.Errorf("建立本地代理连接(%s)失败，%s", to, err.Error())
 	}
+	defer conn.Close()
 
-	defer func() {
-		logs.Notice("断开本地代理连接(%s) ...... %s", name, to)
-		conn.Close()
-	}()
-
-	if err = c.connectServer(conn, "reverse_proxy", name); err != nil {
-		logs.Warning(err.Error())
-	}
+	err = c.connectServer(conn, "reverse_proxy", name)
+	return err
 }
 
-func (c *TClient) ProxyDaemon(name, to string) {
+func (c *TClient) ProxyDaemon(name, to string) error {
 	if to == "" {
-		logs.Error("建立本地代理连接失败，请传入本地代理地址！")
-		return
+		return fmt.Errorf("建立本地代理连接失败，请传入本地代理地址！")
 	}
 	ticker := time.NewTicker(1 * time.Second)
 	for {
-		c.Proxy(name, to)
+		logs.Notice("")
+		logs.Notice("建立本地代理连接(%s) ...... %s", name, to)
+		err := c.Proxy(name, to)
+		if err != nil {
+			logs.Error(err.Error())
+		} else {
+			logs.Notice("断开本地代理连接(%s) ...... %s", name, to)
+		}
 		<-ticker.C
 	}
 }
 
-func (c *TClient) Server(listen string, ctype, to string) {
+func (c *TClient) Server(listen string, ctype, to string) error {
 	if listen == "" {
-		logs.Error("本地监听失败，请传入本地监听端口！")
-		return
+		return fmt.Errorf("本地监听失败，请传入本地监听端口！")
 	}
 
 	lis, err := net.Listen("tcp", listen)
 	if err != nil {
 		if utils.IsAddrInUse(err) {
-			logs.Error("本地监听失败，端口已经被占用。")
+			return fmt.Errorf("本地监听失败，端口已经被占用。")
 		} else {
-			logs.Error("本地监听失败，%s", err.Error())
+			return fmt.Errorf("本地监听失败，%s", err.Error())
 		}
-		return
 	}
-
-	defer func() {
-		logs.Debug("停止本地监听 ...... %s", listen)
-		lis.Close()
-	}()
+	defer lis.Close()
 
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			logs.Error("接收客户端请求失败，%s", err.Error())
-			return
+			return fmt.Errorf("接收客户端请求失败，%s", err.Error())
 		}
 
 		go func(conn net.Conn) {
 			readdr := conn.RemoteAddr()
 			logs.Notice("")
-			logs.Notice("新的客户端接入 ...... %s", readdr)
+			logs.Notice("新客户端接入 ...... %s", readdr)
 			defer func() {
-				logs.Notice("新的客户端断开 ...... %s", readdr)
+				logs.Notice("新客户端断开 ...... %s", readdr)
 				conn.Close()
 			}()
 			if err := c.connectServer(conn, ctype, to); err != nil {
