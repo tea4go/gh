@@ -2,6 +2,7 @@ package http2tcp
 
 import (
 	"bufio"
+	"context"
 	"crypto/tls"
 	"fmt"
 	"io"
@@ -76,7 +77,7 @@ func (c *TClient) ProxyDaemon(name, to string) error {
 	}
 }
 
-func (c *TClient) Server(listen string, ctype, to string) error {
+func (c *TClient) Server(ctx context.Context, listen string, ctype, to string) error {
 	if listen == "" {
 		return fmt.Errorf("本地监听失败，请传入本地监听端口！")
 	}
@@ -92,23 +93,29 @@ func (c *TClient) Server(listen string, ctype, to string) error {
 	defer lis.Close()
 
 	for {
-		conn, err := lis.Accept()
-		if err != nil {
-			return fmt.Errorf("接收客户端请求失败，%s", err.Error())
-		}
-
-		go func(conn net.Conn) {
-			readdr := conn.RemoteAddr()
-			logs.Notice("")
-			logs.Notice("新客户端接入 ...... %s", readdr)
-			defer func() {
-				logs.Notice("新客户端断开 ...... %s", readdr)
-				conn.Close()
-			}()
-			if err := c.connectServer(conn, ctype, to); err != nil {
-				logs.Error("[%18s]%s", readdr, err.Error())
+		select {
+		case <-ctx.Done():
+			break
+		default:
+			conn, err := lis.Accept()
+			if err != nil {
+				logs.Notice("接收客户端请求失败，%s", err.Error())
+				continue
 			}
-		}(conn)
+
+			go func(conn net.Conn) {
+				readdr := conn.RemoteAddr()
+				logs.Notice("")
+				logs.Notice("新客户端接入 ...... %s", readdr)
+				defer func() {
+					logs.Notice("新客户端断开 ...... %s", readdr)
+					conn.Close()
+				}()
+				if err := c.connectServer(conn, ctype, to); err != nil {
+					logs.Error("[%18s]%s", readdr, err.Error())
+				}
+			}(conn)
+		}
 	}
 }
 
