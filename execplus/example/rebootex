@@ -1,0 +1,9 @@
+echo '将5秒后重启机器！'
+
+#sleep 5
+ping 127.0.0.1 -c 5 -t 1 
+# shutdown -r now
+echo '执行成功'
+
+exit 0
+
