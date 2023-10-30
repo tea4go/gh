@@ -75,5 +75,4 @@ func main() {
 	}
 	log.Close()
 	wg.Wait()
-	time.Sleep(5 * time.Second)
 }

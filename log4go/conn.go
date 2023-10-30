@@ -139,7 +139,7 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 		if err != nil {
 			c.Destroy()
 		}
-		time.Sleep(1 * time.Microsecond)
+		time.Sleep(100 * time.Microsecond)
 	}
 	return nil
 }
