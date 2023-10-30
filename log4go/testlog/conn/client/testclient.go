@@ -33,9 +33,6 @@ func main() {
 	}
 	flag.Parse()
 
-	fmt.Printf("Start Log4go Client ...... (%s:%d)\n", *host, *port)
-	fmt.Println("...... 请按 Ctrl+C 结果 ......")
-	fmt.Println("====================================================================")
 	// 创建一个goroutine来处理信号
 	go func() {
 		<-sigs
@@ -43,11 +40,17 @@ func main() {
 		os.Exit(0)
 	}()
 
+	logs.SetFDebug(*debug)
 	log := logs.NewLogger()
 	log.SetLogFuncCallDepth(3)
-	log.SetLogger("conn", fmt.Sprintf(`{"addr":"%s:%d"}`, *host, *port))
+	log.SetLogger("console")
+	log.SetLogger("conn", fmt.Sprintf(`{"addr":"%s:%d","level":5}`, *host, *port))
+	//log.SetLevel(*loglevel, "console")
 	log.SetLevel(*loglevel)
-	log.SetFDebug(*debug)
+
+	fmt.Printf("Start Log4go Client ...... (%s:%d)\n", *host, *port)
+	fmt.Println("...... 请按 Ctrl+C 结果 ......")
+	fmt.Println("====================================================================")
 
 	var wg sync.WaitGroup
 	wg.Add(*thread * *batch)
@@ -63,11 +66,14 @@ func main() {
 				log.Notice("TestLog %04d-%04d(Notice)", b, i)
 				log.Info("TestLog %04d-%04d(Info)", b, i)
 				log.Debug("TestLog %04d-%04d(Debug)", b, i)
+				log.Notice("--------------------------")
 				wg.Done()
-				time.Sleep(time.Duration(rand.Intn(5000)+1000) * time.Millisecond)
+				time.Sleep(time.Duration(rand.Intn(1000)+1000) * time.Millisecond)
 			}
 		}(b)
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	}
+	log.Close()
 	wg.Wait()
+	time.Sleep(5 * time.Second)
 }

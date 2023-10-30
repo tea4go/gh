@@ -14,16 +14,12 @@ import (
 
 func main() {
 	//测试使用ENV变量与中止运行
-	test_exec_env()
+	//test_exec_env()
 
 	//常用的exec使用例子
-	//test_exec("CombinedOutput")
-
-	//test_exec("Output")
-
-	//test_exec("Run")
-	//test_exec("bufio")
-	return
+	test_exec("CombinedOutput")
+	test_exec("Output")
+	test_exec("bufio")
 	test_exec("bytes")
 	//test_exec_WithCancel()
 }
@@ -74,7 +70,7 @@ func test_exec_env() {
 
 func test_exec(test_mode string) {
 	//cmd := execplus.CommandString("/opt/bin/rebootex")
-	cmd := execplus.CommandString("ping -n 5 192.168.50.1")
+	cmd := execplus.CommandString(`ipconfig|findstr IPv4 `)
 	//cmd := execplus.CommandString("ping -c 5 -i 1 192.168.50.1")
 	//cmd := execplus.Command("ping", "127.0.0.1", "-c 2", "-i 1")
 	//cmd := exec.Command("./cmd_demo/cmd_demo", "err")
@@ -95,7 +91,7 @@ func test_exec(test_mode string) {
 			fmt.Println("执行命令出错，原因：", err.Error())
 			fmt.Println(string(out))
 		} else {
-			fmt.Printf("%s", string(out))
+			fmt.Printf("%s", execplus.ConvertByte2String(out, "GB18030"))
 		}
 	} else if test_mode == "Output" {
 		fmt.Println("通过Output执行")
@@ -107,7 +103,7 @@ func test_exec(test_mode string) {
 				fmt.Println("执行命令出错，原因：", err.Error())
 			}
 		} else {
-			fmt.Printf("%s", string(out))
+			fmt.Printf("%s", execplus.ConvertByte2String(out, "GB18030"))
 		}
 	} else if test_mode == "Run" {
 		fmt.Println("通过Run运行命令(需要执行完才能得到结果，通过指定Stdout/Stderr写入器[io.Writer])")
@@ -117,9 +113,9 @@ func test_exec(test_mode string) {
 		err := cmd.Run()
 		if err != nil {
 			fmt.Printf("执行命令出错，原因：%s\n", err.Error())
-			fmt.Printf("%s", stdout.String())
+			fmt.Printf("%s", execplus.ConvertByte2String(stdout.Bytes(), "GB18030"))
 		} else {
-			fmt.Printf("%s", stdout.String())
+			fmt.Printf("%s", execplus.ConvertByte2String(stdout.Bytes(), "GB18030"))
 		}
 	} else if test_mode == "bufio" {
 		fmt.Println("通过自带的Pipe（bufio）")
@@ -148,7 +144,7 @@ func test_exec(test_mode string) {
 					}
 					break
 				}
-				fmt.Printf("%s", string(bufs[:n]))
+				fmt.Printf("%s", execplus.ConvertByte2String(bufs[:n], "GB18030"))
 			}
 		}()
 		go func() {
@@ -162,7 +158,7 @@ func test_exec(test_mode string) {
 					}
 					break
 				}
-				fmt.Printf("%s", string(bufs[:n]))
+				fmt.Printf("%s", execplus.ConvertByte2String(bufs[:n], "GB18030"))
 			}
 		}()
 		cmd.Wait()
@@ -192,7 +188,7 @@ func test_exec(test_mode string) {
 					}
 					break
 				}
-				fmt.Printf("%s", string(bufs[:n]))
+				fmt.Printf("%s", execplus.ConvertByte2String(bufs[:n], "GB18030"))
 			}
 		}()
 		go func() {
@@ -205,7 +201,7 @@ func test_exec(test_mode string) {
 					}
 					break
 				}
-				fmt.Printf("%s", string(bufs[:n]))
+				fmt.Printf("%s", execplus.ConvertByte2String(bufs[:n], "GB18030"))
 			}
 		}()
 		cmd.Wait()

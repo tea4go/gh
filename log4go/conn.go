@@ -47,13 +47,16 @@ func NewConn() ILogger {
 	return conn
 }
 
-func (c *connWriter) connect() error {
+func (c *connWriter) connect(tos ...time.Duration) error {
+	tos = append(tos, c.conn_timeout)
+	to := tos[0]
 	FDebug("Connect() : 连接日志服务器(%s://%s)", c.Net, c.Addr)
 
 	c.Destroy()
 
-	conn, err := net.DialTimeout(c.Net, c.Addr, c.conn_timeout)
+	conn, err := net.DialTimeout(c.Net, c.Addr, to)
 	if err != nil {
+		FDebug("Connect() : 连接日志服务器(%s://%s) ...... %s", c.Net, c.Addr, GetNetError(err))
 		return err
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
@@ -63,20 +66,30 @@ func (c *connWriter) connect() error {
 	c.mu.Lock()
 	c.lgconn = conn
 	c.mu.Unlock()
+
+	//FDebug("Connect() : 连接日志服务器(%s://%s) ...... OK", c.Net, c.Addr)
 	return nil
 }
 
 // Init init connection writer with json config.
 // json config only need key "level".
 func (c *connWriter) Init(jsonConfig string) error {
-	FDebug("InitLogger(conn,%s) : %s", GetLevelName(c.Level), jsonConfig)
+	if len(jsonConfig) == 0 {
+		FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
+		return nil
+	}
 	err := json.Unmarshal([]byte(jsonConfig), c)
 	if err != nil {
+		FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
 		return err
 	}
+	FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
 
-	c.connect()
+	//第一次连接
+	c.connect(1 * time.Second)
+
 	go func() {
+
 		ticker := time.NewTicker(time.Second * 5)
 		defer ticker.Stop()
 
@@ -86,12 +99,14 @@ func (c *connWriter) Init(jsonConfig string) error {
 			} else {
 				err := c.writeMsgByConn("{HeartBeat}\n")
 				if err != nil {
+					FDebug("WriteLogger() : %s", GetNetError(err))
 					c.connect()
 				}
 			}
 		}
 
 	}()
+
 	return nil
 }
 
@@ -124,6 +139,7 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 		if err != nil {
 			c.Destroy()
 		}
+		time.Sleep(1 * time.Microsecond)
 	}
 	return nil
 }

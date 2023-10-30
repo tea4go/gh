@@ -9,12 +9,14 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
-//源码来源于：github.com/codeskyblue/kexec
-//增加两个功能：
-//1、增加退出Terminate函数（通过kill进程来实现）
-//2、两次调用Wait函数不会出错，原来exec调用两次会报错。
+// 源码来源于：github.com/codeskyblue/kexec
+// 增加两个功能：
+// 1、增加退出Terminate函数（通过kill进程来实现）
+// 2、两次调用Wait函数不会出错，原来exec调用两次会报错。
 type CmdPlus struct {
 	*exec.Cmd
 	cancelFunc context.CancelFunc
@@ -28,6 +30,22 @@ type CmdPlus struct {
 func SetShellName(name string) {
 	shell_name = name
 }
+
+func ConvertByte2String(byte []byte, charset string) string {
+	var str string
+	switch charset {
+	case "GB18030":
+		decodeBytes, _ := simplifiedchinese.GB18030.NewDecoder().Bytes(byte)
+		str = string(decodeBytes)
+	case "UTF-8":
+		fallthrough
+	default:
+		str = string(byte)
+	}
+
+	return str
+}
+
 func (Self *CmdPlus) Terminate() {
 	if Self.cancelFunc != nil {
 		Self.cancelFunc()

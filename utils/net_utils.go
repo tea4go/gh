@@ -36,6 +36,20 @@ func IsAddrInUse(err error) bool {
 	return false
 }
 
+func IsNetClose(err error) bool {
+	if strings.Contains(err.Error(), "closed network connection") {
+		return true
+	}
+	if strings.Contains(err.Error(), "was forcibly closed by the remote host") {
+		return true
+	}
+	if strings.Contains(err.Error(), "broken pipe") {
+		return true
+	}
+	return false
+}
+
+// 在日志库里有一个相同代理，需要同步修改。
 func GetNetError(err error) string {
 	if err == io.EOF {
 		return "网络主动断开"
@@ -63,7 +77,7 @@ func GetNetError(err error) string {
 			if errno, ok := t.Err.(syscall.Errno); ok {
 				switch errno {
 				case syscall.ECONNREFUSED:
-					return fmt.Sprintf("连接被服务器拒绝")
+					return fmt.Sprintf("连接被拒绝")
 				case syscall.ETIMEDOUT:
 					return fmt.Sprintf("网络连接超时")
 				}
@@ -72,7 +86,7 @@ func GetNetError(err error) string {
 	}
 
 	if strings.Contains(err.Error(), "closed network connection") {
-		return "使用已关闭的网络连接"
+		return "使用已关闭网络连接"
 	}
 
 	if strings.Contains(err.Error(), "connection refused") {
@@ -102,6 +116,14 @@ func GetNetError(err error) string {
 	if strings.Contains(err.Error(), "was forcibly closed by the remote host") {
 		return "远程主机强制关闭了现有连接"
 	}
+
+	if strings.Contains(err.Error(), "broken pipe") {
+		return "对端已关闭连接"
+	}
+	if strings.Contains(err.Error(), "i/o timeout") {
+		return "网络连接超时"
+	}
+
 	return err.Error()
 }
 
