@@ -20,6 +20,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"golang.org/x/net/proxy"
 	//ffmt "gopkg.in/ffmt.v1"
 )
 
@@ -50,11 +52,68 @@ func NewConn() ILogger {
 func (c *connWriter) connect(tos ...time.Duration) error {
 	tos = append(tos, c.conn_timeout)
 	to := tos[0]
+	proxyAddr := GetParamString("log_http_proxy", "", "")
+	FDebug("Connect() : 连接日志服务器(%s://%s) %s", c.Net, c.Addr, proxyAddr)
+
+	c.Destroy()
+
+	var conn net.Conn
+	var err error
+	if proxyAddr != "" {
+		dialer := &net.Dialer{
+			Timeout:   to,
+			KeepAlive: 30 * time.Second,
+		}
+		dialer_proxy, err := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
+		if err != nil {
+			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(err))
+			conn, err = net.DialTimeout(c.Net, c.Addr, to)
+		} else {
+			conn, err = dialer_proxy.Dial(c.Net, c.Addr)
+		}
+	} else {
+		conn, err = net.DialTimeout(c.Net, c.Addr, to)
+	}
+	if err != nil {
+		FDebug("Connect() : 连接日志服务器(%s://%s) ...... %s", c.Net, c.Addr, GetNetError(err))
+		return err
+	}
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetKeepAlive(true)
+	}
+
+	c.mu.Lock()
+	c.lgconn = conn
+	c.mu.Unlock()
+
+	//FDebug("Connect() : 连接日志服务器(%s://%s) ...... OK", c.Net, c.Addr)
+	return nil
+}
+
+func (c *connWriter) connect_tcp_proxy(tos ...time.Duration) error {
+	tos = append(tos, c.conn_timeout)
+	to := tos[0]
 	FDebug("Connect() : 连接日志服务器(%s://%s)", c.Net, c.Addr)
 
 	c.Destroy()
 
-	conn, err := net.DialTimeout(c.Net, c.Addr, to)
+	var conn net.Conn
+	var err error
+	// 设置代理服务器的地址和端口
+	proxyAddr := GetParamString("log_socks5_proxy", "", "192.168.3.164:32129")
+	if proxyAddr != "" {
+		dialer := &net.Dialer{
+			Timeout:   to,
+			KeepAlive: 30 * time.Second,
+		}
+		dialer_proxy, err := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
+		if err != nil {
+			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(err))
+		}
+		conn, err = dialer_proxy.Dial(c.Net, c.Addr)
+	} else {
+		conn, err = net.DialTimeout(c.Net, c.Addr, to)
+	}
 	if err != nil {
 		FDebug("Connect() : 连接日志服务器(%s://%s) ...... %s", c.Net, c.Addr, GetNetError(err))
 		return err
@@ -139,7 +198,7 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 		if err != nil {
 			c.Destroy()
 		}
-		time.Sleep(100 * time.Microsecond)
+		//time.Sleep(100 * time.Microsecond)
 	}
 	return nil
 }
