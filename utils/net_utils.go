@@ -85,6 +85,10 @@ func GetNetError(err error) string {
 		}
 	}
 
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return "监听端口已关闭"
+	}
+
 	if strings.Contains(err.Error(), "closed network connection") {
 		return "使用已关闭网络连接"
 	}
@@ -120,6 +124,7 @@ func GetNetError(err error) string {
 	if strings.Contains(err.Error(), "broken pipe") {
 		return "对端已关闭连接"
 	}
+
 	if strings.Contains(err.Error(), "i/o timeout") {
 		return "网络连接超时"
 	}
