@@ -1102,7 +1102,7 @@ func webAutoTest(w http.ResponseWriter, r *http.Request) {
 	md, _ := utils.GetFileModTime(os.Args[0])
 	result["app_name"] = "统一接口中心(WebManager)"
 	result["local_ip"] = utils.GetIPAdress()
-	result["build_time"] = md
+	result["build_time"] = md.Format(utils.DateTimeFormat)
 	result["create_time"] = time.Now().Format(utils.DateTimeFormat)
 	result["log_level"] = logs.GetLevel()
 	result["log_level_name"] = logs.GetLevelName(logs.GetLevel())

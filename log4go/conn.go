@@ -35,6 +35,7 @@ type connWriter struct {
 	Net          string `json:"net"`
 	Addr         string `json:"addr"`
 	Level        int    `json:"level"`
+	Name         string `json:"name"`
 	ColorFlag    bool   `json:"color"` //this filed is useful only when system's terminal supports color
 }
 
@@ -80,6 +81,16 @@ func (c *connWriter) connect(tos ...time.Duration) error {
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		tcpConn.SetKeepAlive(true)
+	}
+
+	//设置日志名称
+	if c.Name != "" {
+		msg := fmt.Sprintf("{LogName}%s{LogName}\n", c.Name)
+		_, err = conn.Write([]byte(msg))
+		if err != nil {
+			conn.Close()
+			return err
+		}
 	}
 
 	c.mu.Lock()
