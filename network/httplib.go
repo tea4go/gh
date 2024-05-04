@@ -633,22 +633,6 @@ func (b *THttpRequest) ToFile(filename string) error {
 	return err
 }
 
-// Check that the file directory exists, there is no automatically created
-func pathExistAndMkdir(filename string) (err error) {
-	filename = path.Dir(filename)
-	_, err = os.Stat(filename)
-	if err == nil {
-		return nil
-	}
-	if os.IsNotExist(err) {
-		err = os.MkdirAll(filename, os.ModePerm)
-		if err == nil {
-			return nil
-		}
-	}
-	return err
-}
-
 // ToJSON returns the map that marshals from the body bytes as json in response .
 // it calls Response inner.
 func (b *THttpRequest) ToJSON(v interface{}) error {
@@ -703,6 +687,22 @@ func TimeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) func(net, ad
 		err = conn.SetDeadline(time.Now().Add(rwTimeout))
 		return conn, err
 	}
+}
+
+// Check that the file directory exists, there is no automatically created
+func pathExistAndMkdir(filename string) (err error) {
+	filename = path.Dir(filename)
+	_, err = os.Stat(filename)
+	if err == nil {
+		return nil
+	}
+	if os.IsNotExist(err) {
+		err = os.MkdirAll(filename, os.ModePerm)
+		if err == nil {
+			return nil
+		}
+	}
+	return err
 }
 
 // 单句调用Http请求(有返回值)

@@ -26,3 +26,7 @@ go.work
 log4go/testlog/conn/server/server
 .vscode/launch.json
 
+go.sum
+dingtalk/dingtalk_test.go
+dingtalk/test.json
+ldapclient/ldap_test.go
