@@ -26,17 +26,26 @@ https://github.com/github-9527/ohedu // ChangePassword
 
 var DefaultPwd string = "BGgsh*1050"
 
-type TLdapClient struct {
-	Addr       string   `json:"addr"`
-	BaseDn     string   `json:"baseDn"`
-	BindDn     string   `json:"bindDn`
-	BindPass   string   `json:"bindPass"`
-	AuthFilter string   `json:"authFilter"`
-	Attributes []string `json:"attributes"`
-	MailDomain string   `json:"mailDomain"`
-	TLS        bool     `json:"tls"`
-	StartTLS   bool     `json:"startTLS"`
-	Conn       *ldap.Conn
+var uacMask = map[uint32]string{
+	2:        "ACCOUNT_DISABLE",                        //禁用用户帐户
+	8:        "HOMEDIR_REQUIRED",                       //主文件夹是必需的
+	16:       "LOCKOUT",                                //
+	32:       "PASSWD_NOTREQD",                         //不需要密码
+	64:       "PASSWD_CANT_CHANGE",                     //用户不能更改密码。可以读取此标志，但不能直接设置它
+	128:      "ENCRYPTED_TEXT_PASSWORD_ALLOWED",        //用户可以发送加密的密码
+	512:      "NORMAL_ACCOUNT",                         //表示典型用户的默认帐户类型
+	8192:     "SERVER_TRUST_ACCOUNT",                   //
+	65536:    "DONT_EXPIRE_PASSWD",                     //该帐户上永远不会过期的密码。
+	131072:   "MNS_LOGON_ACCOUNT",                      //
+	262144:   "SMARTCARD_REQUIRED",                     //
+	524288:   "TRUSTED_FOR_DELEGATION",                 //
+	1048576:  "NOT_DELEGATED",                          //
+	2097152:  "USE_DES_KEY_ONLY",                       //
+	4194304:  "DONT_REQUIRE_PREAUTH",                   //
+	8388608:  "PASSWORD_EXPIRED",                       //用户的密码已过期
+	16777216: "TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION", //
+	33554432: "NO_AUTH_DATA_REQUIRED",                  //
+	67108864: "PARTIAL_SECRETS_ACCOUNT",                //
 }
 
 type TResultLdap struct {
@@ -74,6 +83,37 @@ func (Self *TResultLdap) String() string {
 	var out bytes.Buffer
 	json.Indent(&out, s, "", "\t")
 	return string(out.Bytes())
+}
+
+type TLdapUser struct {
+	StaffCode string `json:"code"`    //工号
+	StaffName string `json:"name"`    //姓名
+	Email     string `json:"mail"`    //邮箱
+	Org       string `json:"org"`     //组织
+	Dept      string `json:"dept"`    //部门
+	Phone     string `json:"phone"`   //手机
+	Company   string `json:"belong"`  //公司
+	Station   string `json:"station"` //南京
+}
+
+func (Self *TLdapUser) String() string {
+	s, _ := json.Marshal(Self)
+	var out bytes.Buffer
+	json.Indent(&out, s, "", "\t")
+	return string(out.Bytes())
+}
+
+type TLdapClient struct {
+	Addr       string   `json:"addr"`
+	BaseDn     string   `json:"baseDn"`
+	BindDn     string   `json:"bindDn`
+	BindPass   string   `json:"bindPass"`
+	AuthFilter string   `json:"authFilter"`
+	Attributes []string `json:"attributes"`
+	MailDomain string   `json:"mailDomain"`
+	TLS        bool     `json:"tls"`
+	StartTLS   bool     `json:"startTLS"`
+	Conn       *ldap.Conn
 }
 
 func (lc *TLdapClient) Close() {
@@ -349,28 +389,6 @@ func (lc *TLdapClient) SearchSubAll(SearchFilter string) (results []*TResultLdap
 		results = append(results, result)
 	}
 	return
-}
-
-var uacMask = map[uint32]string{
-	2:        "ACCOUNT_DISABLE",                        //禁用用户帐户
-	8:        "HOMEDIR_REQUIRED",                       //主文件夹是必需的
-	16:       "LOCKOUT",                                //
-	32:       "PASSWD_NOTREQD",                         //不需要密码
-	64:       "PASSWD_CANT_CHANGE",                     //用户不能更改密码。可以读取此标志，但不能直接设置它
-	128:      "ENCRYPTED_TEXT_PASSWORD_ALLOWED",        //用户可以发送加密的密码
-	512:      "NORMAL_ACCOUNT",                         //表示典型用户的默认帐户类型
-	8192:     "SERVER_TRUST_ACCOUNT",                   //
-	65536:    "DONT_EXPIRE_PASSWD",                     //该帐户上永远不会过期的密码。
-	131072:   "MNS_LOGON_ACCOUNT",                      //
-	262144:   "SMARTCARD_REQUIRED",                     //
-	524288:   "TRUSTED_FOR_DELEGATION",                 //
-	1048576:  "NOT_DELEGATED",                          //
-	2097152:  "USE_DES_KEY_ONLY",                       //
-	4194304:  "DONT_REQUIRE_PREAUTH",                   //
-	8388608:  "PASSWORD_EXPIRED",                       //用户的密码已过期
-	16777216: "TRUSTED_TO_AUTHENTICATE_FOR_DELEGATION", //
-	33554432: "NO_AUTH_DATA_REQUIRED",                  //
-	67108864: "PARTIAL_SECRETS_ACCOUNT",                //
 }
 
 func (lc *TLdapClient) SetExternalEmailAddress(path, staff_code, mail, display_name string) error {

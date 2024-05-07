@@ -912,6 +912,40 @@ func SimpleHttpPost(url_str string, body interface{}, conn_timeout, rw_timeout t
 	return resp.StatusCode, respBody, nil
 }
 
+func DownloadURL(url_str string, conn_timeout, rw_timeout time.Duration) (int, []string, error) {
+	c := http.Client{
+		Transport: &http.Transport{
+			Dial: func(netw, addr string) (net.Conn, error) {
+				conn, err := net.DialTimeout(netw, addr, conn_timeout) //设置建立连接超时
+				if err != nil {
+					return nil, err
+				}
+				conn.SetDeadline(time.Now().Add(rw_timeout)) //设置发送接收数据超时
+				return conn, nil
+			},
+		},
+	}
+
+	req, err := http.NewRequest(http.MethodGet, url_str, nil)
+	if err != nil {
+		return 598, nil, err
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return 599, nil, err
+	}
+	defer resp.Body.Close()
+
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return 597, nil, err
+	}
+
+	lines := strings.Split(string(respBody), "\n")
+	return resp.StatusCode, lines, nil
+}
+
 func DownloadFile(url_str string, out_file string, conn_timeout, rw_timeout time.Duration) error {
 	c := http.Client{
 		Transport: &http.Transport{

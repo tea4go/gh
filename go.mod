@@ -1,6 +1,6 @@
 module github.com/tea4go/gh
 
-go 1.18
+go 1.22
 
 require (
 	github.com/chai2010/webp v1.1.1

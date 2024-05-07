@@ -180,10 +180,13 @@ func (c *connWriter) Init(jsonConfig string) error {
 	return nil
 }
 
-func (c *connWriter) writeMsgByConn(msg string) error {
+func (c *connWriter) writeMsgByConn(msg string) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	_, err := c.lgconn.Write([]byte(msg))
+
+	if c.lgconn != nil {
+		_, err = c.lgconn.Write([]byte(msg))
+	}
 	return err
 }
 
