@@ -30,3 +30,4 @@ go.sum
 dingtalk/dingtalk_test.go
 dingtalk/test.json
 ldapclient/ldap_test.go
+log4go/testlog/conn/client/client
