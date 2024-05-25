@@ -71,6 +71,9 @@ func GetNetError(err error) string {
 		}
 	}
 
+	if strings.Contains(err.Error(), "unable to authenticate") {
+		return "无法用户密码验证"
+	}
 	if strings.Contains(err.Error(), "closed network connection") {
 		return "使用已关闭的网络连接"
 	}
