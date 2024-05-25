@@ -40,7 +40,7 @@ func handleConnection(conn net.Conn) {
 		message := make([]byte, 1024)
 		_, err := conn.Read(message)
 		if err != nil {
-			continue
+			return
 		}
 		if !strings.Contains(string(message), "{HeartBeat}") {
 			fmt.Printf("%s", message)

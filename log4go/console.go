@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
 	"time"
 
 	"github.com/shiena/ansicolor"
@@ -76,7 +77,7 @@ func NewConsole() ILogger {
 	cw := &consoleWriter{
 		lgwi:      newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout)),
 		Level:     LevelNotice,
-		ColorFlag: true, //runtime.GOOS != "windows",
+		ColorFlag: runtime.GOOS != "windows",
 	}
 	return cw
 }
@@ -84,7 +85,9 @@ func NewConsole() ILogger {
 // Init init console logger.
 // jsonConfig like '{"level":LevelTrace}'.
 func (c *consoleWriter) Init(jsonConfig string) error {
-	FDebug("InitLogger(console,%s) : %s", GetLevelName(c.Level), jsonConfig)
+	defer func() {
+		FDebug("InitLogger(%s,console,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
+	}()
 	if len(jsonConfig) == 0 {
 		return nil
 	}

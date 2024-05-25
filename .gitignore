@@ -8,6 +8,9 @@
 *.so
 *.dylib
 *.log
+*.sum
+*/*.sum
+.vscode/
 
 # Test binary, built with `go test -c`
 *.test
@@ -20,3 +23,10 @@
 
 # Go workspace file
 go.work
+log4go/testlog/conn/server/server
+.vscode/launch.json
+
+go.sum
+dingtalk/dingtalk_test.go
+dingtalk/test.json
+ldapclient/ldap_test.go

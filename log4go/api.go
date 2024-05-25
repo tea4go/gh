@@ -35,9 +35,9 @@ func SetSync(msgLen ...int64) *TLogger {
 	return gLogger.SetSync(msgLen...)
 }
 
-func SetLevel(l int) {
+func SetLevel(l int, adapters ...string) {
 	if l <= LevelDebug && l >= LevelEmergency {
-		gLogger.SetLevel(l)
+		gLogger.SetLevel(l, adapters...)
 	}
 }
 

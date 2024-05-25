@@ -58,7 +58,7 @@ func NewLogger(channelLens ...int64) *TLogger {
 	}
 	bl.signalChan = make(chan string, 1)
 	bl.init_flag = true
-	bl.setLogger(AdapterConsole)
+	//bl.setLogger(AdapterConsole)
 	return bl
 }
 
@@ -262,11 +262,16 @@ func (bl *TLogger) GetCallStack() (level int, stack string, file string, line in
 // SetLevel Set log message level.
 // If message level (such as LevelDebug) is higher than logger level (such as LevelWarning),
 // log providers will not even be sent the message.
-func (bl *TLogger) SetLevel(l int) {
+func (bl *TLogger) SetLevel(l int, adapters ...string) {
+	adapters = append(adapters, "")
+	adapter_name := adapters[0]
 	if l <= LevelDebug && l >= LevelEmergency {
 		for _, ll := range bl.outputs {
-			FDebug("SetLevel(%s) : %s", ll.name, GetLevelName(l))
-			ll.SetLevel(l)
+			//fmt.Println(adapter_name, ll.name)
+			if adapter_name == "" || adapter_name == ll.name {
+				FDebug("SetLevel(%s) : %s", ll.name, GetLevelName(l))
+				ll.SetLevel(l)
+			}
 		}
 	} else {
 		FDebug("设置日志级别失败！")
@@ -274,6 +279,7 @@ func (bl *TLogger) SetLevel(l int) {
 }
 
 func (bl *TLogger) SetFDebug(l bool) {
+	//fmt.Println("设置Log4go调试：", l)
 	IsDebug = l
 }
 
@@ -281,6 +287,7 @@ func (bl *TLogger) GetLevel(adapters ...string) int {
 	adapters = append(adapters, "")
 	adapter_name := adapters[0]
 	for _, ll := range bl.outputs {
+		//fmt.Printf("GetLevel [%s]=[%s] %d\n", ll.name, adapter_name, ll.GetLevel())
 		if adapter_name == "" || ll.name == adapter_name {
 			return ll.GetLevel()
 		}

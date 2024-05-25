@@ -20,6 +20,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+	"golang.org/x/net/proxy"
 	//ffmt "gopkg.in/ffmt.v1"
 )
 
@@ -33,6 +35,7 @@ type connWriter struct {
 	Net          string `json:"net"`
 	Addr         string `json:"addr"`
 	Level        int    `json:"level"`
+	Name         string `json:"name"`
 	ColorFlag    bool   `json:"color"` //this filed is useful only when system's terminal supports color
 }
 
@@ -47,13 +50,83 @@ func NewConn() ILogger {
 	return conn
 }
 
-func (c *connWriter) connect() error {
+func (c *connWriter) connect(tos ...time.Duration) error {
+	tos = append(tos, c.conn_timeout)
+	to := tos[0]
+	proxyAddr := GetParamString("log_http_proxy", "", "")
+	FDebug("Connect() : 连接日志服务器(%s://%s) %s", c.Net, c.Addr, proxyAddr)
+
+	c.Destroy()
+
+	var conn net.Conn
+	var err error
+	if proxyAddr != "" {
+		dialer := &net.Dialer{
+			Timeout:   to,
+			KeepAlive: 30 * time.Second,
+		}
+		dialer_proxy, err := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
+		if err != nil {
+			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(err))
+			conn, err = net.DialTimeout(c.Net, c.Addr, to)
+		} else {
+			conn, err = dialer_proxy.Dial(c.Net, c.Addr)
+		}
+	} else {
+		conn, err = net.DialTimeout(c.Net, c.Addr, to)
+	}
+	if err != nil {
+		FDebug("Connect() : 连接日志服务器(%s://%s) ...... %s", c.Net, c.Addr, GetNetError(err))
+		return err
+	}
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		tcpConn.SetKeepAlive(true)
+	}
+
+	//设置日志名称
+	if c.Name != "" {
+		msg := fmt.Sprintf("{LogName}%s{LogName}\n", c.Name)
+		_, err = conn.Write([]byte(msg))
+		if err != nil {
+			conn.Close()
+			return err
+		}
+	}
+
+	c.mu.Lock()
+	c.lgconn = conn
+	c.mu.Unlock()
+
+	//FDebug("Connect() : 连接日志服务器(%s://%s) ...... OK", c.Net, c.Addr)
+	return nil
+}
+
+func (c *connWriter) connect_tcp_proxy(tos ...time.Duration) error {
+	tos = append(tos, c.conn_timeout)
+	to := tos[0]
 	FDebug("Connect() : 连接日志服务器(%s://%s)", c.Net, c.Addr)
 
 	c.Destroy()
 
-	conn, err := net.DialTimeout(c.Net, c.Addr, c.conn_timeout)
+	var conn net.Conn
+	var err error
+	// 设置代理服务器的地址和端口
+	proxyAddr := GetParamString("log_socks5_proxy", "", "192.168.3.164:32129")
+	if proxyAddr != "" {
+		dialer := &net.Dialer{
+			Timeout:   to,
+			KeepAlive: 30 * time.Second,
+		}
+		dialer_proxy, err := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
+		if err != nil {
+			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(err))
+		}
+		conn, err = dialer_proxy.Dial(c.Net, c.Addr)
+	} else {
+		conn, err = net.DialTimeout(c.Net, c.Addr, to)
+	}
 	if err != nil {
+		FDebug("Connect() : 连接日志服务器(%s://%s) ...... %s", c.Net, c.Addr, GetNetError(err))
 		return err
 	}
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
@@ -63,20 +136,30 @@ func (c *connWriter) connect() error {
 	c.mu.Lock()
 	c.lgconn = conn
 	c.mu.Unlock()
+
+	//FDebug("Connect() : 连接日志服务器(%s://%s) ...... OK", c.Net, c.Addr)
 	return nil
 }
 
 // Init init connection writer with json config.
 // json config only need key "level".
 func (c *connWriter) Init(jsonConfig string) error {
-	FDebug("InitLogger(conn,%s) : %s", GetLevelName(c.Level), jsonConfig)
+	if len(jsonConfig) == 0 {
+		FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
+		return nil
+	}
 	err := json.Unmarshal([]byte(jsonConfig), c)
 	if err != nil {
+		FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
 		return err
 	}
+	FDebug("InitLogger(%s,conn,color=%v) : %s", GetLevelName(c.Level), c.ColorFlag, jsonConfig)
 
-	c.connect()
+	//第一次连接
+	c.connect(1 * time.Second)
+
 	go func() {
+
 		ticker := time.NewTicker(time.Second * 5)
 		defer ticker.Stop()
 
@@ -86,19 +169,24 @@ func (c *connWriter) Init(jsonConfig string) error {
 			} else {
 				err := c.writeMsgByConn("{HeartBeat}\n")
 				if err != nil {
+					FDebug("WriteLogger() : %s", GetNetError(err))
 					c.connect()
 				}
 			}
 		}
 
 	}()
+
 	return nil
 }
 
-func (c *connWriter) writeMsgByConn(msg string) error {
+func (c *connWriter) writeMsgByConn(msg string) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	_, err := c.lgconn.Write([]byte(msg))
+
+	if c.lgconn != nil {
+		_, err = c.lgconn.Write([]byte(msg))
+	}
 	return err
 }
 
@@ -124,6 +212,7 @@ func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, call
 		if err != nil {
 			c.Destroy()
 		}
+		//time.Sleep(100 * time.Microsecond)
 	}
 	return nil
 }

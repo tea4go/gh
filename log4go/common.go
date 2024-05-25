@@ -18,9 +18,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -119,6 +121,7 @@ func GetParamBool(name string, flag_value bool) bool {
 var IsDebug bool = false
 
 func FDebug(f string, v ...interface{}) {
+	//fmt.Println("FDebug", IsDebug)
 	if IsDebug {
 		// writeMsg will always add a '\n' character
 		if len(f) > 0 && f[len(f)-1] == '\n' {
@@ -180,4 +183,82 @@ func GetFileLines(filename string) (int, error) {
 	}
 
 	return count, nil
+}
+
+// 在日志库里有一个相同代理，需要同步修改。
+func GetNetError(err error) string {
+	if err == io.EOF {
+		return "网络主动断开"
+	}
+
+	netErr, ok := err.(net.Error)
+	if ok {
+		if netErr.Timeout() {
+			return "网络连接超时"
+		}
+		if netErr.Temporary() {
+			return "网络临时错误"
+		}
+	}
+
+	opErr, ok := netErr.(*net.OpError)
+	if ok {
+		if opErr.Err.Error() == "address already in use" {
+			return "端口已经占用"
+		}
+		switch t := opErr.Err.(type) {
+		case *net.DNSError:
+			return "域名解析错误"
+		case *os.SyscallError:
+			if errno, ok := t.Err.(syscall.Errno); ok {
+				switch errno {
+				case syscall.ECONNREFUSED:
+					return fmt.Sprintf("连接被拒绝")
+				case syscall.ETIMEDOUT:
+					return fmt.Sprintf("网络连接超时")
+				}
+			}
+		}
+	}
+
+	if strings.Contains(err.Error(), "closed network connection") {
+		return "使用已关闭网络连接"
+	}
+
+	if strings.Contains(err.Error(), "connection refused") {
+		return "连接被拒绝"
+	}
+
+	if strings.Contains(err.Error(), "server gave HTTP response to HTTPS client") {
+		return "服务器需要https访问"
+	}
+
+	if strings.Contains(err.Error(), "x509: certificate is not valid") {
+		return "无效的网站证书"
+	}
+
+	if strings.Contains(err.Error(), "x509: certificate is valid") {
+		return "网站证书不匹配"
+	}
+
+	if strings.Contains(err.Error(), "no such host") {
+		return "网站域名不存在"
+	}
+
+	if strings.Contains(err.Error(), "actively refused it") {
+		return "无法建立连接"
+	}
+
+	if strings.Contains(err.Error(), "was forcibly closed by the remote host") {
+		return "远程主机强制关闭了现有连接"
+	}
+
+	if strings.Contains(err.Error(), "broken pipe") {
+		return "对端已关闭连接"
+	}
+	if strings.Contains(err.Error(), "i/o timeout") {
+		return "网络连接超时"
+	}
+
+	return err.Error()
 }
