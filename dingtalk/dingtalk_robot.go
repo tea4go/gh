@@ -17,15 +17,15 @@ import (
 
 /*
 钉钉几个关键值：
-1、钉钉小程序有三个字段，例如：安全令牌
+1、钉钉小程序有三个字段，例如：安全牌
    AgentId：615063230
-   AppKey：dingwfevtfsjwgda14sf
-   AppSecret：C93qxESMeqK1XgHc8uBpXWoxy53Ix6EBDZUIWrZ1lOco685Ln-ra4NETc8oGbE_F
+   AppKey： xxx
+   AppSecret： xxx-ra4NETc8oGbE_F
 2、钉钉群自定义机器人
-   Webhook：https://oapi.dingtalk.com/robot/send?access_token=a32607882f95e2f1acc71564711332f4b843a0acac865e324d6914ba75548984
-   加签：SEC9ca0fd5714d2b58d6d8474251b06cb20710f90e64ff8d735b13a23419ec3c858
-   例如：钉钉发消息（群）
-	 curl 'https://oapi.dingtalk.com/robot/send?access_token=c12a607195f4b06add917091bd4b7fe4eb71227f5cf975f517a952f7e092796b&timestamp=1593791380034&sign=C2w5aElJlpcXN9sjE1TDnDKnfjufANybcNo5WrSoTO0%3D' \
+   Webhook：https://oapi.dingtalk.com/robot/send?access_token=xxx
+   加签： xxx
+   例如： 钉钉发消息（群）
+	 curl 'https://oapi.dingtalk.com/robot/send?access_token=xxx&timestamp=1593791380034&sign=xxx%3D' \
 	    -H 'Content-Type: application/json' \
 	    -d '
 	   {"msgtype": "text",
@@ -35,8 +35,8 @@ import (
 	   }'
 	官网地址：https://developers.dingtalk.com/document/app/custom-robot-access?spm=ding_open_doc.document.0.0.6d9d28e15V2W03#topic-2026027
 3、三方系统扫码登录
-   appId:dingoa0ewoncpltwsurfqv
-   appSecret:dzhAcgJTx7gvQxDQhlGqScZa6GrwpTHYiHLVJxma4pSPKeqnxFGyB9vDwm825LaQ
+   appId:xxx
+   appSecret:xxx
 
    获取access_token(appId,appSecret)
    https://oapi.dingtalk.com/gettoken?appkey=%s&appsecret=%s
@@ -148,7 +148,7 @@ func (Self *TDingTalkSns) GetUserByUnionId(code string) (bool, string, error) {
 	body_text, err := req.String()
 	if err != nil {
 		return false, "", errors.New(fmt.Sprintf("发送请求失败，原因：%s", err.Error()))
-	} //{"errcode":0,"errmsg":"ok","unionid":"dxUDiP03drHsiE","openid":"dxNuFxiS4hmkiE","persistent_code":"InVVQOiRWZxwX0Q_2JPIVkWUS7VtCkS7C3jkE-fvEKQ8V9979-utknjrplZWIClU"}
+	} //{"errcode":0,"errmsg":"ok","unionid":"dxUDiP03drHsiE","openid":"dxNuFxiS4hmkiE","persistent_code":"xxx-fvEKQ8V9979-utknjrplZWIClU"}
 
 	info := struct {
 		TResult
@@ -184,7 +184,7 @@ func (Self *TDingTalkSns) GetUserByUnionId(code string) (bool, string, error) {
 	body_text, err = req.String()
 	if err != nil {
 		return false, "", errors.New(fmt.Sprintf("发送请求失败，原因：%s", err.Error()))
-	} //{"errcode":0,"errmsg":"ok","sns_token":"d89bb16dffe431778d806b1c4c30e3b9","expires_in":7200}
+	} //{"errcode":0,"errmsg":"ok","sns_token":"xxx","expires_in":7200}
 
 	info1 := struct {
 		TResult
@@ -207,7 +207,7 @@ func (Self *TDingTalkSns) GetUserByUnionId(code string) (bool, string, error) {
 	body_text, err = req.String()
 	if err != nil {
 		return false, "", errors.New(fmt.Sprintf("发送请求失败，原因：%s", err.Error()))
-	} //{"errcode":0,"errmsg":"ok","user_info":{"nick":"刘启","unionid":"dxUDiP03drHsiE","dingId":"$:LWCP_v1:$WpQSgBHxN/6rm4v40aWRAA==","openid":"dxNuFxiS4hmkiE"}}
+	} //{"errcode":0,"errmsg":"ok","user_info":{"nick":"xxx","unionid":"xxx","dingId":"$:LWCP_v1:$xxx/6rm4v40aWRAA==","openid":"dxNuFxiS4hmkiE"}}
 
 	info2 := TReSnsUser{}
 	err = req.ToJSON(&info2)
@@ -292,8 +292,8 @@ func (Self *TDingTalkOAuth2) GetUserByUnionId(code string) (bool, string, error)
 	BodyParam.Code = code
 	BodyParam.GrantType = "authorization_code"
 
-	//{"expireIn":7200,"accessToken":"dcf09b6491c633659d5e55bc69d70227","refreshToken":"fc7c89c8a12a34289fd0eb6dbf12e09a"}
-	//{"expireIn":7200,"accessToken":"118f4b38962a305ca6d03fa72f67e55b","refreshToken":"2a4c0c87c8ba35469835772a40b510fb"}
+	//{"expireIn":7200,"accessToken":"xxx","refreshToken":"xxx"}
+	//{"expireIn":7200,"accessToken":"xxx","refreshToken":"xxx"}
 	reat := struct {
 		AccessToken string `json:"accessToken"`
 		ExpiresIn   int    `json:"expireIn"`
@@ -315,10 +315,10 @@ func (Self *TDingTalkOAuth2) GetUserByUnionId(code string) (bool, string, error)
 	}
 
 	// {
-	// 	"nick":"刘启",
-	// 	"unionId":"dxUDiP03drHsiE",
-	// 	"avatarUrl":"https://static-legacy.dingtalk.com/media/lADPBbCc1VsAkMLNAoDNAoA_640_640.jpg",
-	// 	"openId":"yxdBZAHRsaQiE"
+	// 	"nick":"xxx",
+	// 	"unionId":"xxx",
+	// 	"avatarUrl":"https://static-legacy.dingtalk.com/media/xxx.jpg",
+	// 	"openId":"xxx"
 	// }
 	reuserid := struct {
 		UnionId   string `json:"unionId"`
@@ -368,23 +368,23 @@ func (w *TDingTalkRobot) Init(access_token string, secret string) {
 func (w *TDingTalkRobot) Inits() {
 	w.config = make([]robotTokenConfig, 0)
 	c1 := robotTokenConfig{} //工具01
-	c1.AccessToken = "bdaf896947630f45256977260a4c75c8b9946bb53118f30f851e0de5d34e7a51"
-	c1.Secret = "SEC709222f0aac2a839ad6fa34b9e978f6423565c71c335b1dc097f726ca3c2b4d4"
+	c1.AccessToken = "xxx"
+	c1.Secret = "xxx"
 	c2 := robotTokenConfig{} // 工具02
-	c2.AccessToken = "c12a607195f4b06add917091bd4b7fe4eb71227f5cf975f517a952f7e092796b"
-	c2.Secret = "SEC12e9f06572b85c007f35b528ca1f09c4c3f66e0f6b3fcfc14894a4c3b16ea951"
+	c2.AccessToken = "xxx"
+	c2.Secret = "xxx"
 
 	c3 := robotTokenConfig{} // 高等
-	c3.AccessToken = "cf507d2334cd6e40751a19636eadc7f4328b82481dc6b3af40203b0e2f0c2894"
-	c3.Secret = "SEC13a69ec3c473306963f70ae9878d09471249b405cc2d9acd53c3d948378048c6"
+	c3.AccessToken = "xxx"
+	c3.Secret = "xxx"
 
 	c4 := robotTokenConfig{} // 机房
-	c4.AccessToken = "f43efe4afb909b4525a99b5f348efdfcdcafc3d9f79484f01a9c7898f2656c25"
-	c4.Secret = "SEC8cb3795ba61170f7dd367f5e79cafed342f50a8e8149c1dcedfa86564a33a8e2"
+	c4.AccessToken = "xxx"
+	c4.Secret = "xxx"
 
 	c5 := robotTokenConfig{} //
-	c5.AccessToken = "a32607882f95e2f1acc71564711332f4b843a0acac865e324d6914ba75548984"
-	c5.Secret = "SEC9ca0fd5714d2b58d6d8474251b06cb20710f90e64ff8d735b13a23419ec3c858"
+	c5.AccessToken = "xxx"
+	c5.Secret = "xxx"
 
 	w.config = append(w.config, c1)
 	w.config = append(w.config, c2)

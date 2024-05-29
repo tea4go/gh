@@ -49,7 +49,7 @@ func IsNetClose(err error) bool {
 	return false
 }
 
-// 在日志库里有一个相同代理，需要同步修改。
+// 在日志库里有一个相同代码，需要同步修改。
 func GetNetError(err error) string {
 	if err == io.EOF {
 		return "网络主动断开"
@@ -89,13 +89,10 @@ func GetNetError(err error) string {
 		return "监听端口已关闭"
 	}
 
-	if strings.Contains(err.Error(), "use of closed network connection") {
-		return "监听端口已关闭"
-	}
-
 	if strings.Contains(err.Error(), "unable to authenticate") {
 		return "无法用户密码验证"
 	}
+
 	if strings.Contains(err.Error(), "closed network connection") {
 		return "使用已关闭网络连接"
 	}

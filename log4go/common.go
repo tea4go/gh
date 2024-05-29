@@ -185,7 +185,7 @@ func GetFileLines(filename string) (int, error) {
 	return count, nil
 }
 
-// 在日志库里有一个相同代理，需要同步修改。
+// 在日志库里有一个相同代码，需要同步修改。
 func GetNetError(err error) string {
 	if err == io.EOF {
 		return "网络主动断开"
@@ -219,6 +219,14 @@ func GetNetError(err error) string {
 				}
 			}
 		}
+	}
+
+	if strings.Contains(err.Error(), "use of closed network connection") {
+		return "监听端口已关闭"
+	}
+
+	if strings.Contains(err.Error(), "unable to authenticate") {
+		return "无法用户密码验证"
 	}
 
 	if strings.Contains(err.Error(), "closed network connection") {
@@ -256,6 +264,7 @@ func GetNetError(err error) string {
 	if strings.Contains(err.Error(), "broken pipe") {
 		return "对端已关闭连接"
 	}
+
 	if strings.Contains(err.Error(), "i/o timeout") {
 		return "网络连接超时"
 	}
