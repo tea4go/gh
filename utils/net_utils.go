@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"syscall"
 )
@@ -153,4 +154,22 @@ func GetIPAdress() string {
 		}
 	}
 	return ip_addr
+}
+
+func GetAllIPAdress() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	ip_addrs := make([]string, 0)
+	for _, value := range addrs {
+		if ipnet, ok := value.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil && !strings.Contains(ipnet.IP.String(), "169") {
+				ip_addrs = append(ip_addrs, ipnet.IP.String())
+			}
+		}
+	}
+
+	sort.Strings(ip_addrs)
+	return strings.Join(ip_addrs, "; ")
 }
