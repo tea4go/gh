@@ -13,7 +13,7 @@ import (
 	"github.com/tea4go/gh/network"
 )
 
-//curl 'https://oapi.dingtalk.com/robot/send?access_token=08b7628ebbb64bd3b8d93119c4d50d1defa2e4b967105d50e72aca7537f9f06e' \
+//curl 'https://oapi.dingtalk.com/robot/send?access_token=xxx' \
 //   -H 'Content-Type: application/json' \
 //   -d '
 //  {"msgtype": "text",
