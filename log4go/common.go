@@ -269,5 +269,9 @@ func GetNetError(err error) string {
 		return "网络连接超时"
 	}
 
+	if strings.Contains(err.Error(), "An attempt was made to access a socket in a way forbidden by its access permissions.") {
+		return "服务不可用"
+	}
+
 	return err.Error()
 }
