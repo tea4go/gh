@@ -173,3 +173,19 @@ func GetAllIPAdress() string {
 	sort.Strings(ip_addrs)
 	return strings.Join(ip_addrs, "; ")
 }
+
+func GetAllMacAdress() string {
+	addrs, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+	mac_addrs := make([]string, 0)
+	for _, value := range addrs {
+		if value.HardwareAddr != nil {
+			mac_addrs = append(mac_addrs, value.HardwareAddr.String())
+		}
+	}
+
+	sort.Strings(mac_addrs)
+	return strings.Join(mac_addrs, "; ")
+}
