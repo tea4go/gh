@@ -6,3 +6,6 @@ git push origin --tags
 ## 设置临时代理
 git config https.proxy https://127.0.0.1:32124
 git config http.proxy  http://127.0.0.1:32124
+
+git config --unset https.proxy
+git config --unset http.proxy
