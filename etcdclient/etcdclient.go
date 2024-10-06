@@ -78,46 +78,29 @@ func (etcd *TEtcdClient) SetHead(head string) {
 }
 
 /**
- * 连接etcd
- */
-func Connect(etcdAddrs []string) (*TEtcdClient, error) {
-	etcd := &TEtcdClient{head: "tea4go"}
-	cli, err := clientv3.New(clientv3.Config{
-		Endpoints:   etcdAddrs,
-		DialTimeout: ConnTimeout,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	etcd.client = cli
-	return etcd, nil
-}
-
-/**
  * Set Value
  */
-func (etcd *TEtcdClient) Set(key string, value string, args ...int) (bool, error) {
+func (etcd *TEtcdClient) Set(key string, value string, args ...int) error {
 	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
 	if len(args) > 0 {
 		expires := args[0]
 		lease, err := etcd.client.Grant(ctx, int64(expires))
 		if err != nil {
-			return false, err
+			return err
 		}
 		opp := clientv3.WithLease(lease.ID)
 		_, err = etcd.client.Put(ctx, etcd.head+key, value, opp)
 		if err == nil {
-			return true, nil
+			return nil
 		} else {
-			return false, err
+			return err
 		}
 	} else {
 		_, err := etcd.client.Put(ctx, etcd.head+key, value)
 		if err == nil {
-			return true, nil
+			return nil
 		} else {
-			return false, err
+			return err
 		}
 	}
 }
@@ -225,7 +208,7 @@ func (etcd *TEtcdClient) GetRangeLimit(startKey string, limit int) (map[string]s
 /**
  * Delete One
  */
-func (etcd *TEtcdClient) Delete(key string) (int64, error) {
+func (etcd *TEtcdClient) Del(key string) (int64, error) {
 	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
 	ret, err := etcd.client.Delete(ctx, etcd.head+key)
 	if err != nil {
@@ -237,7 +220,7 @@ func (etcd *TEtcdClient) Delete(key string) (int64, error) {
 /**
  * Delete All By Prefix
  */
-func (etcd *TEtcdClient) DeleteAll(prefix string) (int64, error) {
+func (etcd *TEtcdClient) DelAll(prefix string) (int64, error) {
 	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
 	withPrefix := clientv3.WithPrefix()
 	ret, err := etcd.client.Delete(ctx, etcd.head+prefix, withPrefix)
@@ -259,4 +242,21 @@ func (etcd *TEtcdClient) GetClient() *clientv3.Client {
  */
 func (etcd *TEtcdClient) GetKV() clientv3.KV {
 	return etcd.client.KV
+}
+
+/**
+ * 连接etcd
+ */
+func Connect(etcdAddrs []string) (*TEtcdClient, error) {
+	etcd := &TEtcdClient{head: "tea4go"}
+	cli, err := clientv3.New(clientv3.Config{
+		Endpoints:   etcdAddrs,
+		DialTimeout: ConnTimeout,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	etcd.client = cli
+	return etcd, nil
 }

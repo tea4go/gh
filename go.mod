@@ -11,6 +11,7 @@ require (
 	github.com/miekg/dns v1.1.56
 	github.com/mozillazg/go-pinyin v0.20.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/nutsdb/nutsdb v1.0.4
 	github.com/openstandia/goldap/message v0.0.0-20191227184744-b5528a3af20f
 	github.com/pires/go-proxyproto v0.7.0
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
@@ -19,6 +20,7 @@ require (
 	golang.org/x/image v0.15.0
 	golang.org/x/net v0.22.0
 	golang.org/x/text v0.14.0
+	gopkg.in/ffmt.v1 v1.5.6
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -30,6 +32,9 @@ replace (
 
 require (
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
+	github.com/antlabs/stl v0.0.1 // indirect
+	github.com/antlabs/timer v0.0.11 // indirect
+	github.com/bwmarrin/snowflake v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/coreos/bbolt v1.3.4 // indirect
 	github.com/coreos/etcd v3.3.27+incompatible // indirect
@@ -42,6 +47,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
 	github.com/go-errors/errors v1.0.1 // indirect
+	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/geo v0.0.0-20190916061304-5b978397cfec // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
@@ -59,12 +65,16 @@ require (
 	github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118 // indirect
 	github.com/mdlayher/packet v1.0.0 // indirect
 	github.com/mdlayher/socket v0.2.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
+	github.com/tidwall/btree v1.6.0 // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20220101234140-673ab2c3ae75 // indirect
 	github.com/xiang90/probing v0.0.0-20221125231312-a49e3df8f510 // indirect
+	github.com/xujiajun/mmap-go v1.0.1 // indirect
+	github.com/xujiajun/utils v0.0.0-20220904132955-5f7c5b914235 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.21.0 // indirect
