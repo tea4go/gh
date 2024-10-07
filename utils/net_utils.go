@@ -182,7 +182,27 @@ func GetAllMacAdress() string {
 	mac_addrs := make([]string, 0)
 	for _, value := range addrs {
 		if value.HardwareAddr != nil {
-			mac_addrs = append(mac_addrs, value.HardwareAddr.String())
+			if !strings.Contains(value.Flags.String(), "running") {
+				continue
+			}
+			ip_addr, _ := value.Addrs()
+
+			ip_addr_text := ""
+			for _, ip := range ip_addr {
+				if strings.Contains(ip.String(), "::") {
+					continue
+				}
+				if ip_addr_text == "" {
+					ip_addr_text = ip.String()
+				} else {
+					ip_addr_text = ip_addr_text + "," + ip.String()
+				}
+			}
+			if ip_addr_text == "" {
+				continue
+			}
+
+			mac_addrs = append(mac_addrs, fmt.Sprintf("%s|%s|%s", value.Name, ip_addr_text, value.HardwareAddr.String()))
 		}
 	}
 
