@@ -15,6 +15,15 @@ func PrintData(title string, items []*TNustDBField) {
 		fmt.Println(v.Key, "=>", v.Value)
 	}
 }
+
+func TestLPush(t *testing.T) {
+	inst := InitInstance("default", "./nustdb")
+
+	inst.SetHead("TEST")
+	inst.SetBucketName("List", 3)
+	fmt.Println(inst.LPushByBucketName("List", "List01", "123123"))
+}
+
 func TestInitInstance(t *testing.T) {
 	inst := InitInstance("default", "./nustdb")
 
