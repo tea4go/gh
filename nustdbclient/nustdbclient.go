@@ -2,6 +2,8 @@ package nustdbclient
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -30,8 +32,21 @@ var once sync.Once
 /**
  * 初始化一个单例,一般用于程序启动时
  */
-func InitInstance(bucket_name, db_path string) *TNustDBClient {
+func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	if instance == nil {
+		if re_new {
+			files, _ := ioutil.ReadDir(db_path)
+			for _, f := range files {
+				name := f.Name()
+				if name != "" {
+					err := os.RemoveAll(db_path + "/" + name)
+					if err != nil {
+						panic(err)
+					}
+				}
+			}
+		}
+
 		db, err := nutsdb.Open(
 			nutsdb.DefaultOptions,
 			nutsdb.WithDir(db_path),
@@ -43,10 +58,8 @@ func InitInstance(bucket_name, db_path string) *TNustDBClient {
 		err = db.Update(
 			func(tx *nutsdb.Tx) error {
 				if !tx.ExistBucket(nutsdb.DataStructureBTree, bucket_name) {
-					fmt.Println("NewBucket =", bucket_name)
 					return tx.NewBucket(nutsdb.DataStructureBTree, bucket_name)
 				}
-				fmt.Println("Exist Bucket =", bucket_name)
 				return nil
 			})
 		if err != nil {
@@ -65,9 +78,9 @@ func InitInstance(bucket_name, db_path string) *TNustDBClient {
 /**
  * 获取一个单例,可以用这个不需要考虑线程安全
  */
-func GetInstance(bucket_name, db_path string) *TNustDBClient {
+func GetInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	if instance == nil {
-		instance = InitInstance(bucket_name, db_path)
+		instance = InitInstance(bucket_name, db_path, re_new)
 	}
 	return instance
 }
@@ -75,9 +88,9 @@ func GetInstance(bucket_name, db_path string) *TNustDBClient {
 /**
  * 获取一个线程安全的单例
  */
-func GetSafeInstance(bucket_name, db_path string) *TNustDBClient {
+func GetSafeInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	once.Do(func() {
-		instance = InitInstance(bucket_name, db_path)
+		instance = InitInstance(bucket_name, db_path, re_new)
 	})
 	return instance
 }
@@ -101,9 +114,6 @@ func (d *TNustDBClient) SetHead(head string) {
 	}
 }
 
-/**
- * 连接etcd
- */
 func (d *TNustDBClient) GetBucketName() string {
 	return d.bucket
 }
@@ -119,10 +129,8 @@ func (d *TNustDBClient) SetBucketName(bucket_name string, args ...uint16) (err e
 		err = d.db.Update(
 			func(tx *nutsdb.Tx) error {
 				if !tx.ExistBucket(ds, bucket_name) {
-					fmt.Println("SetBucketName NewBucket =", bucket_name)
 					return tx.NewBucket(ds, bucket_name)
 				}
-				fmt.Println("SetBucketName Exist Bucket =", bucket_name)
 				return nil
 			})
 
@@ -136,7 +144,6 @@ func (d *TNustDBClient) SetBucketName(bucket_name string, args ...uint16) (err e
 func (s *TNustDBClient) LPush(keyname string, value string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
-			fmt.Println("s.bucket", s.bucket)
 			return tx.LPush(s.bucket, []byte(s.head+keyname), []byte(value))
 		})
 
@@ -150,7 +157,6 @@ func (s *TNustDBClient) LPushByBucket(bucket_name, keyname string, value string)
 
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
-			fmt.Println("LPush", bucket_name)
 			return tx.LPush(bucket_name, []byte(s.head+keyname), []byte(value))
 		})
 
@@ -170,6 +176,32 @@ func (s *TNustDBClient) LRangeByBucket(bucket_name, keyname string) (items []str
 			return err
 		})
 	return
+}
+
+func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	s.db.View(
+		func(tx *nutsdb.Tx) (err error) {
+			err = tx.LKeys(bucket_name, "*", func(key string) bool {
+				datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
+				if err != nil {
+					return false
+				}
+
+				fmt.Println("==> LIST", strings.ReplaceAll(key, s.head, ""))
+				for i, v := range datas {
+					fmt.Printf("[%03d] = %s \n", i, string(v))
+				}
+				return true
+			})
+
+			return err
+		})
+
+	return err
 }
 
 /*
@@ -211,7 +243,6 @@ func (s *TNustDBClient) SetValueByBucket(bucket_name, keyname string, value stri
 func (s *TNustDBClient) GetValue(keyname string) (value string, err error) {
 	err = s.db.View(
 		func(tx *nutsdb.Tx) error {
-			fmt.Println("s.bucket", s.bucket)
 			v, err := tx.Get(s.bucket, []byte(s.head+keyname))
 			if err != nil {
 				return err
@@ -229,7 +260,6 @@ func (s *TNustDBClient) GetValueByBucket(bucket_name, keyname string) (value str
 	}
 	err = s.db.View(
 		func(tx *nutsdb.Tx) error {
-			fmt.Println("s.bucket", s.bucket)
 			v, err := tx.Get(bucket_name, []byte(s.head+keyname))
 			if err != nil {
 				return err
@@ -263,13 +293,50 @@ func (s *TNustDBClient) GetAllValue(keyname string) (items []*TNustDBField, err 
 	return items, err
 }
 
-/**
- * Delete One
- */
+func (s *TNustDBClient) Printf(bucket_name, keyname string) (err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	err = s.db.View(
+		func(tx *nutsdb.Tx) error {
+			keys, values, err := tx.GetAll(bucket_name)
+			if err != nil {
+				return err
+			}
+
+			for k, key := range keys {
+				if keyname == "" || strings.HasPrefix(string(key), s.head+keyname) {
+					tmp := string(key)
+					tmp = strings.Replace(tmp, s.head, "", 1)
+					fmt.Println("==> SET", tmp)
+					fmt.Println(string(values[k]))
+				}
+			}
+
+			return nil
+		})
+
+	return err
+}
+
 func (s *TNustDBClient) DelValue(keyname string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
 			return tx.Delete(s.bucket, []byte(s.head+keyname))
+		})
+
+	return err
+}
+
+func (s *TNustDBClient) DelValueByBucket(bucket_name, keyname string) error {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	err := s.db.Update(
+		func(tx *nutsdb.Tx) error {
+			return tx.Delete(bucket_name, []byte(s.head+keyname))
 		})
 
 	return err
@@ -286,6 +353,29 @@ func (s *TNustDBClient) DelAllValue(keyname string) error {
 			for _, key := range keys {
 				if keyname == "" || strings.HasPrefix(string(key), s.head+keyname) {
 					tx.Delete(s.bucket, key)
+				}
+			}
+
+			return nil
+		})
+	return err
+}
+
+func (s *TNustDBClient) DelAllValueByBucket(bucket_name, keyname string) error {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	err := s.db.Update(
+		func(tx *nutsdb.Tx) error {
+			keys, err := tx.GetKeys(bucket_name)
+			if err != nil {
+				return err
+			}
+
+			for _, key := range keys {
+				if keyname == "" || strings.HasPrefix(string(key), s.head+keyname) {
+					tx.Delete(bucket_name, key)
 				}
 			}
 
