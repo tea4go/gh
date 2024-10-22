@@ -20,6 +20,12 @@ type TNustDBField struct {
 	Key   string
 	Value string
 }
+
+type TNustDBList struct {
+	Key   string
+	Value []string
+}
+
 type TNustDBClient struct {
 	db     *nutsdb.DB
 	bucket string
@@ -178,6 +184,34 @@ func (s *TNustDBClient) LRangeByBucket(bucket_name, keyname string) (items []str
 	return
 }
 
+func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	s.db.View(
+		func(tx *nutsdb.Tx) (err error) {
+			err = tx.LKeys(bucket_name, "*", func(key string) bool {
+				datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
+				if err != nil {
+					return false
+				}
+
+				item := TNustDBList{}
+				item.Key = strings.ReplaceAll(key, s.head, "")
+				for _, v := range datas {
+					item.Value = append(item.Value, string(v))
+				}
+				items = append(items, item)
+				return true
+			})
+
+			return err
+		})
+
+	return
+}
+
 func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -201,7 +235,7 @@ func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 			return err
 		})
 
-	return err
+	return
 }
 
 /*
