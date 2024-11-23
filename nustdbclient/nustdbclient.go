@@ -38,7 +38,7 @@ var once sync.Once
 /**
  * 初始化一个单例,一般用于程序启动时
  */
-func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
+func InitInstance(bucket_name, db_path string, re_new bool) (*TNustDBClient, error) {
 	if instance == nil {
 		if re_new {
 			files, _ := ioutil.ReadDir(db_path)
@@ -58,7 +58,7 @@ func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 			nutsdb.WithDir(db_path),
 		)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		err = db.Update(
@@ -69,7 +69,7 @@ func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 				return nil
 			})
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		instance = &TNustDBClient{
@@ -78,7 +78,7 @@ func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 		}
 
 	}
-	return instance
+	return instance, nil
 }
 
 /**
@@ -86,7 +86,10 @@ func InitInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
  */
 func GetInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	if instance == nil {
-		instance = InitInstance(bucket_name, db_path, re_new)
+		instance, _ = InitInstance(bucket_name, db_path, re_new)
+		if instance == nil {
+			panic("获取实例失败")
+		}
 	}
 	return instance
 }
@@ -96,7 +99,10 @@ func GetInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
  */
 func GetSafeInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	once.Do(func() {
-		instance = InitInstance(bucket_name, db_path, re_new)
+		instance, _ = InitInstance(bucket_name, db_path, re_new)
+		if instance == nil {
+			panic("获取单例失败")
+		}
 	})
 	return instance
 }
@@ -222,6 +228,7 @@ func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 			err = tx.LKeys(bucket_name, "*", func(key string) bool {
 				datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
 				if err != nil {
+					fmt.Printf("LPrintf 获取数据失败，%s\n", err.Error())
 					return false
 				}
 
@@ -305,20 +312,21 @@ func (s *TNustDBClient) GetValueByBucket(bucket_name, keyname string) (value str
 	return
 }
 
-func (s *TNustDBClient) GetAllValue(keyname string) (items []*TNustDBField, err error) {
+func (s *TNustDBClient) GetAllValue(bucket_name string) (items []*TNustDBField, err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
 	err = s.db.View(
 		func(tx *nutsdb.Tx) error {
-			keys, values, err := tx.GetAll(s.bucket)
+			keys, values, err := tx.GetAll(bucket_name)
 			if err != nil {
 				return err
 			}
 
 			for k, key := range keys {
-				if keyname == "" || strings.HasPrefix(string(key), s.head+keyname) {
-					tmp := string(key)
-					tmp = strings.Replace(tmp, s.head, "", 1)
-					items = append(items, &TNustDBField{Key: tmp, Value: string(values[k])})
-				}
+				tmp := strings.Replace(string(key), s.head, "", 1)
+				items = append(items, &TNustDBField{Key: tmp, Value: string(values[k])})
 			}
 
 			return nil
@@ -336,6 +344,7 @@ func (s *TNustDBClient) Printf(bucket_name, keyname string) (err error) {
 		func(tx *nutsdb.Tx) error {
 			keys, values, err := tx.GetAll(bucket_name)
 			if err != nil {
+				fmt.Printf("Printf 获取数据失败，%s\n", err.Error())
 				return err
 			}
 
