@@ -65,7 +65,9 @@ type TPing struct {
 
 func (p *TPing) SetTarget(t *ping.TTarget) {
 	t.Protocol = ping.TCP
-	t.Proxy = p.option.Proxy.String()
+	if p.option.Proxy != nil {
+		t.Proxy = p.option.Proxy.String()
+	}
 	t.Timeout = p.option.Timeout
 }
 
