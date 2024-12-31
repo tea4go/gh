@@ -15,6 +15,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	logs "github.com/tea4go/gh/log4go"
+	"gopkg.in/ffmt.v1"
 	//ffmt "gopkg.in/ffmt.v1"
 )
 
@@ -23,6 +26,7 @@ var pinger = map[SProtocol]Factory{}
 type Factory func(url *url.URL, op *TOption) (IPing, error)
 
 func Register(p SProtocol, factory Factory) {
+	logs.Debug("= 注册组件 ...... %s", p)
 	pinger[p] = factory
 }
 
@@ -64,7 +68,7 @@ func NewProtocol(protocol string) (SProtocol, error) {
 	case HTTPS.String():
 		return HTTPS, nil
 	}
-	return 0, fmt.Errorf("protocol %s not support", protocol)
+	return 0, fmt.Errorf("无效协议(%s)", protocol)
 }
 
 type TOption struct {
@@ -116,6 +120,7 @@ func NewPinger(out io.Writer, url *url.URL, ping IPing, interval time.Duration, 
 		url:      url,
 		ping:     ping,
 	}
+	pger.result.Target.Protocol = url.Scheme
 	pger.result.Target.URL = url.String()
 	pger.result.Target.Interval = interval
 	pger.result.Target.Counter = counter
@@ -213,7 +218,7 @@ func (p *TPinger) PingServer() {
 		case <-timer.C:
 			stats := p.ping.Ping(ctx)
 			p.items.PushFront(stats)
-			//ffmt.Puts(stats)
+			ffmt.Puts(stats)
 			p.total++
 			if p.total > 5 {
 				p.items.Remove(p.items.Back())
@@ -228,11 +233,15 @@ func (p *TPinger) PingServer() {
 
 func (p *TPinger) Summarize() {
 	const tpl = `
-Ping statistics %s
+Ping statistics for %s
 	%d probes sent.
 	%d successful, %d failed.
 Approximate trip times:
-	Minimum = %s, Maximum = %s, Average = %s`
+	Minimum = %s, Maximum = %s, Average = %s
+`
+	if p.total == 0 {
+		return
+	}
 	_, _ = fmt.Fprintf(p.out, tpl, p.url.String(), p.total, p.total-p.failedTotal, p.failedTotal, p.minDuration, p.maxDuration, p.totalDuration/time.Duration(p.total))
 }
 
@@ -257,10 +266,10 @@ func (p *TPinger) SetResult(st *TStats) {
 	}
 
 	if st.Error != nil {
-		_, _ = fmt.Fprintf(p.out, "Ping %s(%s) %s(%s) - time=%-10s dns=%-9s",
+		_, _ = fmt.Fprintf(p.out, "Ping %s (%s) %s(%s) - time=%-10s dns=%-9s",
 			p.url.String(), st.Address, status, FormatError(st.Error), st.Duration.String(), st.DNSDuration)
 	} else {
-		_, _ = fmt.Fprintf(p.out, "Ping %s(%s) %s - time=%-10s dns=%-9s",
+		_, _ = fmt.Fprintf(p.out, "Ping %s (%s) %s - time=%-10s dns=%-9s",
 			p.url.String(), st.Address, status, st.Duration.String(), st.DNSDuration)
 	}
 	if len(st.Meta) > 0 {
@@ -275,7 +284,7 @@ func (p *TPinger) SetResult(st *TStats) {
 type TData struct {
 }
 type TTarget struct {
-	Protocol SProtocol
+	Protocol string
 	URL      string
 	IP       string
 	Port     int

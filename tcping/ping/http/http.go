@@ -16,7 +16,6 @@ import (
 var _ ping.IPing = (*TPing)(nil)
 
 func New(method string, url string, op *ping.TOption, trace bool) (*TPing, error) {
-
 	_, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("网址或方法无效, %w", err)
@@ -64,7 +63,6 @@ type TPing struct {
 }
 
 func (p *TPing) SetTarget(t *ping.TTarget) {
-	t.Protocol = ping.TCP
 	if p.option.Proxy != nil {
 		t.Proxy = p.option.Proxy.String()
 	}
@@ -78,6 +76,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+
 	stats := ping.TStats{
 		Meta: map[string]fmt.Stringer{},
 	}
@@ -85,6 +84,8 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	if p.trace {
 		stats.Extra = &trace
 	}
+
+	//#region 开始 Ping 操作
 	start := time.Now()
 	req, err := http.NewRequestWithContext(trace.WithTrace(ctx), p.method, p.url, nil)
 	if err != nil {
@@ -93,9 +94,11 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	}
 	req.Header.Set("user-agent", p.option.UA)
 	resp, err := p.client.Do(req)
+	//#endregion
+
+	//#region 开始 Ping 统计
 	stats.DNSDuration = trace.DNSDuration
 	stats.Address = trace.address
-
 	if err != nil {
 		stats.Error = err
 		stats.Duration = time.Since(start)
@@ -115,6 +118,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 			stats.Error = fmt.Errorf("读取Http返回包失败， %w", err)
 		}
 	}
+	//#endregion
 	return &stats
 }
 

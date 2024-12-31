@@ -35,7 +35,6 @@ type TPing struct {
 }
 
 func (p *TPing) SetTarget(t *ping.TTarget) {
-	t.Protocol = ping.TCP
 	t.IP = p.host
 	t.Port = p.port
 	t.Timeout = p.option.Timeout
@@ -50,44 +49,51 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	defer cancel()
 
 	var stats ping.TStats
-	var dnsStart time.Time
-	// trace dns query
-	ctx = httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
-		DNSStart: func(info httptrace.DNSStartInfo) {
-			dnsStart = time.Now()
-		},
-		DNSDone: func(info httptrace.DNSDoneInfo) {
-			stats.DNSDuration = time.Since(dnsStart)
-		},
-	})
 
-	start := time.Now()
+	//#region HttpTrace 追踪 DNS 时间
+	var dnsStart time.Time
+	ctx = httptrace.WithClientTrace(ctx,
+		&httptrace.ClientTrace{
+			DNSStart: func(info httptrace.DNSStartInfo) {
+				dnsStart = time.Now()
+			},
+			DNSDone: func(info httptrace.DNSDoneInfo) {
+				stats.DNSDuration = time.Since(dnsStart)
+			},
+		})
+	//#endregion
+
 	var (
 		conn    net.Conn
 		err     error
 		tlsConn *tls.Conn
 		tlsErr  error
 	)
+
+	//#region 连接主机端口
+	start := time.Now()
+	addr := fmt.Sprintf("%s:%d", p.host, p.port)
 	if p.tls {
-		tlsConn, err = tls.DialWithDialer(p.dialer, "tcp", fmt.Sprintf("%s:%d", p.host, p.port), &tls.Config{
-			InsecureSkipVerify: true,
-		})
+		tlsConn, err = tls.DialWithDialer(p.dialer, "tcp", addr, &tls.Config{InsecureSkipVerify: true})
 		if err == nil {
 			conn = tlsConn.NetConn()
 		} else {
 			tlsErr = err
-			conn, err = p.dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", p.host, p.port))
+			conn, err = p.dialer.DialContext(ctx, "tcp", addr)
 		}
 	} else {
-		conn, err = p.dialer.DialContext(ctx, "tcp", fmt.Sprintf("%s:%d", p.host, p.port))
+		conn, err = p.dialer.DialContext(ctx, "tcp", addr)
 	}
 	stats.Duration = time.Since(start)
+	//#endregion
+
 	if err != nil {
 		stats.Error = err
 		if oe, ok := err.(*net.OpError); ok && oe.Addr != nil {
 			stats.Address = oe.Addr.String()
 		}
 	} else {
+		//#region 连接成功处理统计信息
 		stats.Connected = true
 		stats.Address = conn.RemoteAddr().String()
 		if tlsConn != nil && len(tlsConn.ConnectionState().PeerCertificates) > 0 {
@@ -102,6 +108,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 		} else if p.tls {
 			stats.Extra = bytes.NewBufferString("警告：此端口不是SSL/TLS协议，" + ping.FormatError(tlsErr) + "！")
 		}
+		//#endregion
 	}
 	return &stats
 }
