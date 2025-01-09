@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	pkgurl "net/url"
 	"strconv"
 	"time"
@@ -15,20 +16,18 @@ import (
 
 var _ ping.IPing = (*TPing)(nil)
 
-func New(method string, url string, op *ping.TOption, trace bool) (*TPing, error) {
+func NewHttp(url string, op *ping.TOption) (*TPing, error) {
+	method := op.HttpMethod
+	if method == "" {
+		method = http.MethodGet
+	}
 	_, err := http.NewRequest(method, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("网址或方法无效, %w", err)
 	}
-
-	if method == "" {
-		method = http.MethodGet
-	}
-
 	return &TPing{
 		url:    url,
 		method: method,
-		trace:  trace,
 		option: op,
 		client: &http.Client{
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -37,8 +36,8 @@ func New(method string, url string, op *ping.TOption, trace bool) (*TPing, error
 			},
 			Transport: &http.Transport{
 				Proxy: func(r *http.Request) (*pkgurl.URL, error) {
-					if op.Proxy != nil {
-						return op.Proxy, nil
+					if op.HttpProxy != nil {
+						return op.HttpProxy, nil
 					}
 					return http.ProxyFromEnvironment(r)
 				},
@@ -54,17 +53,14 @@ func New(method string, url string, op *ping.TOption, trace bool) (*TPing, error
 
 type TPing struct {
 	client *http.Client
-	trace  bool
-
-	option *ping.TOption
+	url    string
 	method string
-
-	url string
+	option *ping.TOption
 }
 
 func (p *TPing) SetTarget(t *ping.TTarget) {
-	if p.option.Proxy != nil {
-		t.Proxy = p.option.Proxy.String()
+	if p.option.HttpProxy != nil {
+		t.Proxy = p.option.HttpProxy.String()
 	}
 	t.Timeout = p.option.Timeout
 }
@@ -81,7 +77,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 		Meta: map[string]fmt.Stringer{},
 	}
 	trace := Trace{}
-	if p.trace {
+	if p.option.IsMeta {
 		stats.Extra = &trace
 	}
 
@@ -92,7 +88,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 		stats.Error = err
 		return &stats
 	}
-	req.Header.Set("user-agent", p.option.UA)
+	req.Header.Set("user-agent", p.option.UserAgent)
 	resp, err := p.client.Do(req)
 	//#endregion
 
@@ -126,4 +122,15 @@ type Int int
 
 func (i Int) String() string {
 	return strconv.Itoa(int(i))
+}
+
+func init() {
+	ping.Register(ping.HTTP,
+		func(url *url.URL, op *ping.TOption) (ping.IPing, error) {
+			return NewHttp(url.String(), op)
+		})
+	ping.Register(ping.HTTPS,
+		func(url *url.URL, op *ping.TOption) (ping.IPing, error) {
+			return NewHttp(url.String(), op)
+		})
 }

@@ -17,6 +17,7 @@ import (
 	"time"
 
 	logs "github.com/tea4go/gh/log4go"
+
 	"gopkg.in/ffmt.v1"
 	//ffmt "gopkg.in/ffmt.v1"
 )
@@ -72,10 +73,13 @@ func NewProtocol(protocol string) (SProtocol, error) {
 }
 
 type TOption struct {
-	Timeout  time.Duration //连接超时
-	Resolver *net.Resolver // 自定义DNS域名解析
-	Proxy    *url.URL      // Http代理(格式：http://192.168.3.157:32126）
-	UA       string        // 浏览器UA标识
+	Timeout    time.Duration // 连接超时
+	Resolver   *net.Resolver // 自定义DNS域名解析
+	HttpProxy  *url.URL      // Http代理(格式：http://192.168.3.157:32126）(Http/Https)
+	HttpMethod string        // 请求方法 (Http/Https)
+	IsMeta     bool          // 是否启用Meta信息采集 (Http/Https)
+	UserAgent  string        // 浏览器UA标识 (Http/Https)
+	IsTls      bool          // 是否启用TLS (TCP)
 }
 
 type TStats struct {

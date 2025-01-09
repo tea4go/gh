@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net"
 	"net/http/httptrace"
+	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/tea4go/gh/tcping/ping"
@@ -14,9 +16,8 @@ import (
 
 var _ ping.IPing = (*TPing)(nil)
 
-func New(host string, port int, op *ping.TOption, tls bool) *TPing {
+func NewTCP(host string, port int, op *ping.TOption) *TPing {
 	return &TPing{
-		tls:    tls,
 		host:   host,
 		port:   port,
 		option: op,
@@ -27,11 +28,10 @@ func New(host string, port int, op *ping.TOption, tls bool) *TPing {
 }
 
 type TPing struct {
-	option *ping.TOption
+	dialer *net.Dialer
 	host   string
 	port   int
-	dialer *net.Dialer
-	tls    bool
+	option *ping.TOption
 }
 
 func (p *TPing) SetTarget(t *ping.TTarget) {
@@ -73,7 +73,7 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	//#region 连接主机端口
 	start := time.Now()
 	addr := fmt.Sprintf("%s:%d", p.host, p.port)
-	if p.tls {
+	if p.option.IsTls {
 		tlsConn, err = tls.DialWithDialer(p.dialer, "tcp", addr, &tls.Config{InsecureSkipVerify: true})
 		if err == nil {
 			conn = tlsConn.NetConn()
@@ -105,10 +105,22 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 				notBefore:  state.PeerCertificates[0].NotBefore,
 				notAfter:   state.PeerCertificates[0].NotAfter,
 			}
-		} else if p.tls {
+		} else if p.option.IsTls {
 			stats.Extra = bytes.NewBufferString("警告：此端口不是SSL/TLS协议，" + ping.FormatError(tlsErr) + "！")
 		}
 		//#endregion
 	}
 	return &stats
+}
+
+func init() {
+	fmt.Println("tcping: 注册 TCP 协议 Ping")
+	ping.Register(ping.TCP,
+		func(url *url.URL, op *ping.TOption) (ping.IPing, error) {
+			port, err := strconv.Atoi(url.Port())
+			if err != nil {
+				return nil, err
+			}
+			return NewTCP(url.Hostname(), port, op), nil
+		})
 }
