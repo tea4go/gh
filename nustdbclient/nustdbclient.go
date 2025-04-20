@@ -125,13 +125,8 @@ func (d *TNustDBClient) GetHead() string {
 
 func (d *TNustDBClient) SetHead(head string) {
 	if head != "" {
-		if head[0] == '/' {
-			d.head = head
-		} else {
-			d.head = "/" + head
-		}
-		if head[len(head)-1] != '/' {
-			d.head += "/"
+		if head[len(head)-1] != '_' {
+			d.head += "_"
 		}
 	} else {
 		d.head = ""
@@ -158,9 +153,12 @@ func (s *TNustDBClient) LPushByBucket(bucket_name, keyname string, value string)
 
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
+			logs.FDebug("LPushByBucket(%s) : %s = [%s]", bucket_name, s.head+keyname, value)
 			return tx.LPush(bucket_name, []byte(s.head+keyname), []byte(value))
 		})
-
+	if err != nil {
+		logs.FDebug("LPushByBucket(%s) : %s = [%s] 失败，%v", bucket_name, s.head+keyname, value, err)
+	}
 	return err
 }
 
