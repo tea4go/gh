@@ -185,6 +185,9 @@ func GetAllMacAdress() string {
 			if !strings.Contains(value.Flags.String(), "running") {
 				continue
 			}
+			if strings.Contains(value.Name, "vEthernet") {
+				continue
+			}
 			ip_addr, _ := value.Addrs()
 
 			ip_addr_text := ""
