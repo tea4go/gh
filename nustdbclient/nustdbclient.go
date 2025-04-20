@@ -72,6 +72,17 @@ func InitInstance(bucket_name, db_path string, re_new bool) (*TNustDBClient, err
 			return nil, err
 		}
 
+		err = db.Update(
+			func(tx *nutsdb.Tx) error {
+				if !tx.ExistBucket(nutsdb.DataStructureList, bucket_name) {
+					return tx.NewBucket(nutsdb.DataStructureList, bucket_name)
+				}
+				return nil
+			})
+		if err != nil {
+			return nil, err
+		}
+
 		instance = &TNustDBClient{
 			db:     db,
 			bucket: bucket_name,
@@ -128,29 +139,6 @@ func (d *TNustDBClient) SetHead(head string) {
 
 func (d *TNustDBClient) GetBucketName() string {
 	return d.bucket
-}
-
-func (d *TNustDBClient) SetBucketName(bucket_name string, args ...uint16) (err error) {
-	if bucket_name != "" {
-		var ds uint16
-		ds = nutsdb.DataStructureBTree
-		if len(args) >= 1 {
-			ds = args[0]
-		}
-
-		err = d.db.Update(
-			func(tx *nutsdb.Tx) error {
-				if !tx.ExistBucket(ds, bucket_name) {
-					return tx.NewBucket(ds, bucket_name)
-				}
-				return nil
-			})
-
-		if err == nil {
-			d.bucket = bucket_name
-		}
-	}
-	return err
 }
 
 func (s *TNustDBClient) LPush(keyname string, value string) error {
