@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nutsdb/nutsdb"
+	logs "github.com/tea4go/gh/log4go"
 )
 
 const (
@@ -210,22 +211,24 @@ func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
 	}
-
+	logs.FDebug("LPrintf(%s)", bucket_name)
 	s.db.View(
 		func(tx *nutsdb.Tx) (err error) {
-			err = tx.LKeys(bucket_name, "*", func(key string) bool {
-				datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
-				if err != nil {
-					fmt.Printf("LPrintf 获取数据失败，%s\n", err.Error())
-					return false
-				}
+			err = tx.LKeys(bucket_name, "*",
+				func(key string) bool {
+					logs.FDebug("LPrintf(%s) : %s", bucket_name, key)
+					datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
+					if err != nil {
+						fmt.Printf("LPrintf 获取数据失败，%s\n", err.Error())
+						return false
+					}
 
-				fmt.Println("==> LIST", strings.ReplaceAll(key, s.head, ""))
-				for i, v := range datas {
-					fmt.Printf("[%03d] = %s \n", i, string(v))
-				}
-				return true
-			})
+					fmt.Println("==> LIST", strings.ReplaceAll(key, s.head, ""))
+					for i, v := range datas {
+						fmt.Printf("[%03d] = %s \n", i, string(v))
+					}
+					return true
+				})
 
 			return err
 		})
