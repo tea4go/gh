@@ -597,7 +597,9 @@ func (b *THttpRequest) Bytes() ([]byte, error) {
 		return nil, nil
 	}
 	defer resp.Body.Close()
+
 	if b.setting.Gzip && resp.Header.Get("Content-Encoding") == "gzip" {
+		logs.FDebug("<=== 读取GZIP数据")
 		reader, err := gzip.NewReader(resp.Body)
 		if err != nil {
 			return nil, err
@@ -605,7 +607,9 @@ func (b *THttpRequest) Bytes() ([]byte, error) {
 		b.body, err = ioutil.ReadAll(reader)
 		return b.body, err
 	}
+
 	b.body, err = ioutil.ReadAll(resp.Body)
+	logs.FDebug("<=== 读取数据长度为 %d 字节", len(b.body))
 	return b.body, err
 }
 
@@ -789,12 +793,14 @@ func HttpRequest(method, url string, is_cookie bool,
 	params map[string]string, body interface{},
 	cookies []*http.Cookie, header map[string]string, username, password string,
 	result interface{}) (int, *http.Response, []byte, error) {
+
+	logs.FDebug("= %s - %s", method, url)
 	//新建Http请求
 	req := NewRequest(url, method)
 
 	if len(header) > 0 {
-		//fmt.Println("===> SetHeader")
 		for k, v := range header {
+			logs.FDebug("===> SetHeader(%s) : %v", k, v)
 			req.Header(k, v)
 		}
 	}
@@ -802,7 +808,7 @@ func HttpRequest(method, url string, is_cookie bool,
 	if body != nil {
 		req.Header("Content-Type", "application/json")
 		req.Header("accept", "*/*")
-		//fmt.Println("===> SetBody")
+		logs.FDebug("===> SetBody")
 		var body_str string
 		switch body.(type) {
 		case string:
@@ -815,22 +821,22 @@ func HttpRequest(method, url string, is_cookie bool,
 		req.Body(body_str)
 	}
 	if username+password != "" {
-		//fmt.Println("===> SetBasicAuth")
+		logs.FDebug("===> SetBasicAuth(%s/%s)", username, password)
 		req.SetBasicAuth(username, password)
 	}
 
-	//fmt.Println("===> SetEnableCookie", is_cookie)
+	logs.FDebug("===> SetEnableCookie(%v)", is_cookie)
 	req.SetEnableCookie(is_cookie)
 
 	if len(cookies) > 0 {
-		//fmt.Println("===> SetCookie")
+		logs.FDebug("===> SetCookie")
 		for _, cookie := range cookies {
 			req.SetCookie(cookie)
 		}
 	}
 	if len(params) > 0 {
-		//fmt.Println("===> SetParams")
 		for k, v := range params {
+			logs.FDebug("===> SetParams(%s) : %v", k, v)
 			req.Param(k, v)
 		}
 	}
@@ -839,14 +845,24 @@ func HttpRequest(method, url string, is_cookie bool,
 	if err != nil {
 		return 0, req.GetResponse(), nil, fmt.Errorf("获取返回数据错误，%s", utils.GetNetError(err))
 	}
-	//fmt.Println("返回数据：", string(data))
+	if len(data) > 1024 {
+		logs.FDebug("<=== 返回部分数据：[%s]", string(data[:1024]))
+	} else {
+		logs.FDebug("<=== 返回全部数据：[%s]", string(data))
+	}
 
 	state_code, err := req.StatusCode()
 	if err != nil {
 		return 0, req.GetResponse(), data, fmt.Errorf("获取返回码错误，%s", err.Error())
 	}
+	logs.FDebug("<=== 返回状态码：%d", state_code)
 	if result == nil {
 		return state_code, req.GetResponse(), data, nil
+	}
+
+	//如果没有返回数据，刚直接返回
+	if len(data) == 0 {
+		return state_code, req.GetResponse(), data, fmt.Errorf("服务请求错误，没有返回数据 (%d)", state_code)
 	}
 
 	err_json := json.Unmarshal(data, result)
@@ -856,8 +872,7 @@ func HttpRequest(method, url string, is_cookie bool,
 		return state_code, req.GetResponse(), data, fmt.Errorf("服务请求错误，返回码：%d", state_code)
 	} else {
 		if err_json != nil {
-			logs.Debug("返回数据解析错误，返回码：%d\n%s", state_code, string(data))
-			return state_code, req.GetResponse(), data, fmt.Errorf("返回数据解析错误(%d)， %s", state_code, utils.GetNetError(err_json))
+			return state_code, req.GetResponse(), data, fmt.Errorf("返回数据解析错误(%d)，%s", state_code, utils.GetNetError(err_json))
 		} else {
 			return state_code, req.GetResponse(), data, nil
 		}
