@@ -125,6 +125,7 @@ func (d *TNustDBClient) GetHead() string {
 
 func (d *TNustDBClient) SetHead(head string) {
 	if head != "" {
+		d.head = head
 		if head[len(head)-1] != '_' {
 			d.head += "_"
 		}
@@ -209,7 +210,7 @@ func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
 	}
-	logs.FDebug("LPrintf(%s)", bucket_name)
+	logs.FDebug("LPrintf(%s) - Head:%s", bucket_name, s.head)
 	s.db.View(
 		func(tx *nutsdb.Tx) (err error) {
 			err = tx.LKeys(bucket_name, "*",
