@@ -1,10 +1,12 @@
 package network
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"runtime"
@@ -16,14 +18,79 @@ import (
 
 var AppName string
 var AppVersion string
-
-const (
-	baseURL = "http://nj.yj2025.icu:23432/update" // 更新服务器基础URL
-)
+var VerServer string = "http://nj.yj2025.icu:23432" // 更新服务器基础URL
 
 func SetAppVersion(appname, appver string) {
 	AppName = appname
 	AppVersion = appver
+}
+
+//curl -X POST ^
+//  -F "version=v3.0.7_20250427" ^
+//  -F "verpath=/update/F112" ^
+//  -F "verfile=@C:\DevDisk\Other\MiniXplorer\f112.exe" ^
+//  http://localhost:8080/publish?key=tvQ2YthGoV2wymjWVkyc ^
+//  | jq
+
+// PublishSoftware 发布软件函数
+func PublishSoftware() error {
+	logs.Notice("发布新版本 (%s)", os.Args[0])
+	logs.Debug("= 程序名：%s", AppName)
+	logs.Debug("= 版本号：%s", AppVersion)
+	logs.Debug("= 操作系统：%s", runtime.GOOS)
+	logs.Debug("= 系统架构：%s", runtime.GOARCH)
+	// 创建一个缓冲区用于存储multipart表单数据
+	var requestBody bytes.Buffer
+	writer := multipart.NewWriter(&requestBody)
+	// 添加表单字段
+	_ = writer.WriteField("version", AppVersion)
+	_ = writer.WriteField("verpath", "/update/"+AppName)
+	_ = writer.WriteField("GOOS", runtime.GOOS)
+	_ = writer.WriteField("GOARCH", runtime.GOARCH)
+	_ = writer.WriteField("key", "tvQ2YthGoV2wymjWVkyc")
+	// 添加文件
+	file, err := os.Open(os.Args[0])
+	if err != nil {
+		return fmt.Errorf("打开文件错误，%v", err)
+	}
+	defer file.Close()
+
+	part, err := writer.CreateFormFile("verfile", file.Name())
+	if err != nil {
+		return fmt.Errorf("创建表单文件错误，%v", err)
+	}
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return fmt.Errorf("复制文件内容错误，%v", err)
+	}
+	// 关闭writer以完成表单写入
+	err = writer.Close()
+	if err != nil {
+		return fmt.Errorf("关闭multipart写入错误，%v", err)
+	}
+
+	// 创建请求
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/publish", VerServer), &requestBody)
+	if err != nil {
+		return fmt.Errorf("创建请求错误，%v", err)
+	}
+	// 设置Content-Type头部，包含boundary
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// 发送请求
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("发送请求错误，%v", err)
+	}
+	defer resp.Body.Close()
+
+	// 检查响应状态码
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("请求错误，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+	}
+	return nil
 }
 
 // checkForUpdate 检查是否有新版本可用
@@ -33,7 +100,7 @@ func CheckForUpdate() (string, string, string, error) {
 	}
 
 	// 获取版本信息文件
-	url := fmt.Sprintf("%s/%s/%s.txt", baseURL, AppName, AppName)
+	url := fmt.Sprintf("%s/update/%s/%s.txt", VerServer, AppName, AppName)
 	logs.Debug("检测新版本，版本地址: %s", url)
 
 	resp, err := http.Get(url)
@@ -69,7 +136,7 @@ func CheckForUpdate() (string, string, string, error) {
 
 	// 检查是否比当前版本新
 	if compareVersions(latestVersion, AppVersion) > 0 {
-		downurl := fmt.Sprintf("%s/%s/%s.%s.%s.%s", baseURL, AppName, AppName, latestVersion, runtime.GOOS, runtime.GOARCH)
+		downurl := fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", VerServer, AppName, AppName, latestVersion, runtime.GOOS, runtime.GOARCH)
 		if runtime.GOOS == "windows" {
 			downurl += ".exe"
 		}

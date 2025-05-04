@@ -73,6 +73,7 @@ func GetHttpRemoteAddr(req *http.Request) string {
 		addr = req.Header.Get("X-Forwarded-For")
 		if addr == "" {
 			addr = req.RemoteAddr
+			addr = strings.ReplaceAll(addr, "[::1]", "127.0.0.1")
 			if strings.Contains(addr, ":") {
 				return fmt.Sprintf("%s", strings.Split(addr, ":")[0])
 			} else {
