@@ -14,6 +14,7 @@ import (
 
 	"github.com/minio/selfupdate"
 	logs "github.com/tea4go/gh/log4go"
+	"github.com/tea4go/gh/utils"
 )
 
 var AppName string
@@ -34,7 +35,7 @@ func SetAppVersion(appname, appver string) {
 
 // PublishSoftware 发布软件函数
 func PublishSoftware() error {
-	logs.Notice("发布新版本 (%s)", os.Args[0])
+	logs.Info("发布新版本 (%s)", os.Args[0])
 	logs.Debug("= 程序名：%s", AppName)
 	logs.Debug("= 版本号：%s", AppVersion)
 	logs.Debug("= 操作系统：%s", runtime.GOOS)
@@ -81,7 +82,7 @@ func PublishSoftware() error {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("发送请求错误，%v", err)
+		return fmt.Errorf("发送请求错误，%v", utils.GetNetError(err))
 	}
 	defer resp.Body.Close()
 
@@ -105,18 +106,18 @@ func CheckForUpdate() (string, string, string, error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", "", "", fmt.Errorf("无法连接到版本服务器: %v", err)
+		return "", "", "", fmt.Errorf("检测新版本失败，%v", utils.GetNetError(err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", "", "", fmt.Errorf("获取版本信息失败，HTTP状态码: %d", resp.StatusCode)
+		return "", "", "", fmt.Errorf("无法连接到版本服务器，返回HTTP状态码(%d)", resp.StatusCode)
 	}
 
 	// 读取版本信息
 	versionData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", "", "", fmt.Errorf("读取版本信息失败: %v", err)
+		return "", "", "", fmt.Errorf("读取版本信息错误，%v", err)
 	}
 
 	latestVersion := ""
@@ -144,6 +145,7 @@ func CheckForUpdate() (string, string, string, error) {
 		return latestVersion, checksum, downurl, nil
 	}
 
+	logs.Debug("当前已经是最新版本 %s -> %s", AppVersion, latestVersion)
 	return "", "", "", nil
 }
 

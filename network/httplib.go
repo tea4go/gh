@@ -86,6 +86,21 @@ func GetHttpRemoteAddr(req *http.Request) string {
 		return addr
 	}
 }
+func GetHttpRemoteAddrPort(req *http.Request) string {
+	addr := ""
+	if req != nil {
+		addr = req.Header.Get("X-Forwarded-For")
+		if addr == "" {
+			addr = req.RemoteAddr
+			addr = strings.ReplaceAll(addr, "[::1]", "127.0.0.1")
+			return addr
+		} else {
+			return addr
+		}
+	} else {
+		return addr
+	}
+}
 
 // NewTRequest return *THttpRequest with specific method
 func NewRequest(rawurl, method string) *THttpRequest {
