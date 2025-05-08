@@ -22,8 +22,15 @@ var AppVersion string
 var VerServer string = "http://nj.yj2025.icu:23432" // 更新服务器基础URL
 
 func SetAppVersion(appname, appver string) {
+	// 设置应用程序名称
 	AppName = appname
+	// 设置应用程序版本
 	AppVersion = appver
+}
+
+func SetVerServer(serv_url string) {
+	// 设置版本服务器地址
+	VerServer = serv_url
 }
 
 //curl -X POST ^
@@ -40,11 +47,14 @@ func PublishSoftware() error {
 	logs.Debug("= 版本号：%s", AppVersion)
 	logs.Debug("= 操作系统：%s", runtime.GOOS)
 	logs.Debug("= 系统架构：%s", runtime.GOARCH)
+	logs.Debug("= 更新服务器：%s", VerServer)
+
 	// 创建一个缓冲区用于存储multipart表单数据
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 	// 添加表单字段
 	_ = writer.WriteField("version", AppVersion)
+	_ = writer.WriteField("appname", AppName)
 	_ = writer.WriteField("verpath", "/update/"+AppName)
 	_ = writer.WriteField("GOOS", runtime.GOOS)
 	_ = writer.WriteField("GOARCH", runtime.GOARCH)
@@ -101,10 +111,10 @@ func CheckForUpdate() (string, string, string, error) {
 	}
 
 	// 获取版本信息文件
-	url := fmt.Sprintf("%s/update/%s/%s.txt", VerServer, AppName, AppName)
-	logs.Debug("检测新版本，版本地址: %s", url)
+	downurl := fmt.Sprintf("%s/update/%s/%s.%s.%s.txt", VerServer, AppName, AppName, runtime.GOOS, runtime.GOARCH)
+	logs.Debug("检测新版本，版本地址: %s", downurl)
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(downurl)
 	if err != nil {
 		return "", "", "", fmt.Errorf("检测新版本失败，%v", utils.GetNetError(err))
 	}
@@ -137,7 +147,7 @@ func CheckForUpdate() (string, string, string, error) {
 
 	// 检查是否比当前版本新
 	if compareVersions(latestVersion, AppVersion) > 0 {
-		downurl := fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", VerServer, AppName, AppName, latestVersion, runtime.GOOS, runtime.GOARCH)
+		downurl = fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", VerServer, AppName, AppName, runtime.GOOS, runtime.GOARCH, latestVersion)
 		if runtime.GOOS == "windows" {
 			downurl += ".exe"
 		}
