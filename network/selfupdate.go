@@ -11,8 +11,10 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/minio/selfupdate"
+	"github.com/schollz/progressbar/v3"
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/utils"
 )
@@ -188,6 +190,99 @@ func DoUpdate(downurl, checksum string) error {
 		opts.Checksum, _ = hex.DecodeString(checksum)
 	}
 	if err := selfupdate.Apply(resp.Body, opts); err != nil {
+		if rerr := selfupdate.RollbackError(err); rerr != nil {
+			return fmt.Errorf("无法回滚，请手动删除版本！(%v)", rerr)
+		}
+		if strings.Contains(err.Error(), "Updated file has wrong checksum") {
+			return fmt.Errorf("版本文件已损坏！")
+		}
+		return err
+	}
+
+	return nil
+}
+
+type progressReader struct {
+	reader io.Reader
+	bar    *progressbar.ProgressBar
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.reader.Read(p)
+	if n > 0 {
+		pr.bar.Add(n)
+	}
+	return n, err
+}
+
+func DoUpdateWithProgress(downurl, checksum string) error {
+	logs.Debug("开始下载更新版本(%s)", downurl)
+
+	// 确保下载链接是有效的
+	if !strings.HasPrefix(downurl, "http") {
+		return fmt.Errorf("无效的更新URL(%s)", downurl)
+	}
+
+	// 创建自定义HTTP客户端
+	client := &http.Client{
+		Timeout: 30 * time.Minute,
+	}
+
+	// 发起HEAD请求获取文件大小
+	resp, err := client.Head(downurl)
+	if err != nil {
+		return fmt.Errorf("获取文件大小错误，%v", err)
+	}
+	defer resp.Body.Close()
+
+	fileSize := resp.ContentLength
+	if fileSize <= 0 {
+		return fmt.Errorf("无效的文件。")
+	}
+
+	// 创建进度条 - 修正后的版本
+	bar := progressbar.NewOptions64(
+		fileSize,
+		progressbar.OptionSetDescription("下载新版本 ...... "),
+		progressbar.OptionSetWriter(os.Stderr),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(50),
+		progressbar.OptionThrottle(100*time.Millisecond),
+		progressbar.OptionShowCount(),
+		progressbar.OptionOnCompletion(func() {
+			fmt.Fprint(os.Stderr, "\n下载新版本 ...... OK\n")
+		}),
+		progressbar.OptionSpinnerType(14),
+		progressbar.OptionFullWidth(),
+		progressbar.OptionSetRenderBlankState(true),
+	)
+
+	// 获取更新文件
+	resp, err = client.Get(downurl)
+	if err != nil {
+		return fmt.Errorf("下载新版本错误，%v", err)
+	}
+	defer resp.Body.Close()
+
+	// 包装响应体以跟踪进度
+	progressReader := &progressReader{
+		reader: resp.Body,
+		bar:    bar,
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == 404 {
+			return fmt.Errorf("文件不存在(%d)", resp.StatusCode)
+		}
+		return fmt.Errorf("文件下载错误(%d)", resp.StatusCode)
+	}
+
+	// 应用更新
+	opts := selfupdate.Options{}
+	if checksum != "" {
+		opts.Checksum, _ = hex.DecodeString(checksum)
+	}
+	if err := selfupdate.Apply(progressReader, opts); err != nil {
 		if rerr := selfupdate.RollbackError(err); rerr != nil {
 			return fmt.Errorf("无法回滚，请手动删除版本！(%v)", rerr)
 		}
