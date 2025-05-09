@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/k0kubun/go-ansi"
 	"github.com/minio/selfupdate"
 	"github.com/schollz/progressbar/v3"
 	logs "github.com/tea4go/gh/log4go"
@@ -22,6 +23,19 @@ import (
 var AppName string
 var AppVersion string
 var VerServer string = "http://nj.yj2025.icu:23432" // 更新服务器基础URL
+
+type progressReader struct {
+	reader io.Reader
+	bar    *progressbar.ProgressBar
+}
+
+func (pr *progressReader) Read(p []byte) (int, error) {
+	n, err := pr.reader.Read(p)
+	if n > 0 {
+		pr.bar.Add(n)
+	}
+	return n, err
+}
 
 func SetAppVersion(appname, appver string) {
 	// 设置应用程序名称
@@ -60,7 +74,22 @@ func PublishSoftware() error {
 	_ = writer.WriteField("verpath", "/update/"+AppName)
 	_ = writer.WriteField("GOOS", runtime.GOOS)
 	_ = writer.WriteField("GOARCH", runtime.GOARCH)
+	_ = writer.WriteField("servurl", VerServer)
 	_ = writer.WriteField("key", "tvQ2YthGoV2wymjWVkyc")
+
+	puturl := `发布的地址：
+curl -X POST ^
+	-F "version=%s" ^
+	-F "appname=%s" ^
+	-F "verpath=/update/%s" ^
+	-F "GOOS=%s" ^
+	-F "GOARCH=%s" ^
+	-F "key=tvQ2YthGoV2wymjWVkyc" ^
+	-F "verfile=@%s" ^
+	%s/publish ^
+	| jq`
+	logs.Debug(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, os.Args[0], VerServer)
+
 	// 添加文件
 	file, err := os.Open(os.Args[0])
 	if err != nil {
@@ -202,19 +231,6 @@ func DoUpdate(downurl, checksum string) error {
 	return nil
 }
 
-type progressReader struct {
-	reader io.Reader
-	bar    *progressbar.ProgressBar
-}
-
-func (pr *progressReader) Read(p []byte) (int, error) {
-	n, err := pr.reader.Read(p)
-	if n > 0 {
-		pr.bar.Add(n)
-	}
-	return n, err
-}
-
 func DoUpdateWithProgress(downurl, checksum string) error {
 	logs.Debug("开始下载更新版本(%s)", downurl)
 
@@ -244,10 +260,11 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 	bar := progressbar.NewOptions64(
 		fileSize,
 		progressbar.OptionSetDescription("下载新版本 ...... "),
-		progressbar.OptionSetWriter(os.Stderr),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetWidth(50),
-		progressbar.OptionThrottle(100*time.Millisecond),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionThrottle(1000*time.Millisecond),
 		progressbar.OptionShowCount(),
 		progressbar.OptionOnCompletion(func() {
 			fmt.Fprint(os.Stderr, "\n下载新版本 ...... OK\n")
@@ -255,6 +272,13 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 		progressbar.OptionSpinnerType(14),
 		progressbar.OptionFullWidth(),
 		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
 	)
 
 	// 获取更新文件
