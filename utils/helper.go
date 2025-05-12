@@ -112,9 +112,13 @@ func SetRunFileName(file string) string {
 
 // 获取当前程序名称
 func RunFileName() string {
-	f, err := exec.LookPath(os.Args[0])
+	exename := os.Args[0]
+	if runtime.GOOS == "windows" && strings.ToLower(filepath.Ext(exename)) != ".exe" {
+		exename += ".exe"
+	}
+	f, err := exec.LookPath(exename)
 	if err != nil {
-		return strings.ReplaceAll(os.Args[0], "\\", "/")
+		return strings.ReplaceAll(exename, "\\", "/")
 	}
 	return strings.ReplaceAll(f, "\\", "/")
 }

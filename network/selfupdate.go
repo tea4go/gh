@@ -58,7 +58,7 @@ func SetVerServer(serv_url string) {
 
 // PublishSoftware 发布软件函数
 func PublishSoftware() error {
-	logs.Info("发布新版本 (%s)", os.Args[0])
+	logs.Info("发布新版本 (%s)", utils.RunFileName())
 	logs.Debug("= 程序名：%s", AppName)
 	logs.Debug("= 版本号：%s", AppVersion)
 	logs.Debug("= 操作系统：%s", runtime.GOOS)
@@ -88,10 +88,10 @@ curl -X POST ^
 	-F "verfile=@%s" ^
 	%s/publish ^
 	| jq`
-	logs.Debug(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, os.Args[0], VerServer)
+	logs.Debug(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, utils.RunFileName(), VerServer)
 
 	// 添加文件
-	file, err := os.Open(os.Args[0])
+	file, err := os.Open(utils.RunFileName())
 	if err != nil {
 		return fmt.Errorf("打开文件错误，%v", err)
 	}
