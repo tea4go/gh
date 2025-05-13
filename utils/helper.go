@@ -715,10 +715,6 @@ func StringToTimeByTemplates(tm, templates string) (time.Time, error) {
 	return time.Time{}, err
 }
 
-func init() {
-	TimeLocation, _ = time.LoadLocation("Asia/Chongqing")
-}
-
 func GetDebugStack() string {
 	stacks := strings.Split(string(debug.Stack()), "\n")
 	result := "当前堆栈："
@@ -782,4 +778,15 @@ func getClassName(func_name string) string {
 	}
 	result += fmt.Sprintf("%s", t1[len(t1)-1])
 	return result
+}
+
+var LineEnding string // 根据系统自动设置
+
+func init() {
+	TimeLocation, _ = time.LoadLocation("Asia/Chongqing")
+	if runtime.GOOS == "windows" {
+		LineEnding = "\r\n"
+	} else {
+		LineEnding = "\n"
+	}
 }

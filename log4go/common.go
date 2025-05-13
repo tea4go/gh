@@ -16,6 +16,7 @@ package logs
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -274,4 +275,11 @@ func GetNetError(err error) string {
 	}
 
 	return err.Error()
+}
+
+func ShowArgs() {
+	Debug("共有 %d 个非Flag参数:\n", flag.NArg())
+	for i := 0; i < flag.NArg(); i++ {
+		Debug("= 参数 %d: %s\n", i+1, flag.Arg(i))
+	}
 }
