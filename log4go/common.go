@@ -16,7 +16,6 @@ package logs
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -25,6 +24,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	flag "github.com/spf13/pflag"
 )
 
 var adapters = make(map[string]newLoggerFunc)
@@ -282,4 +283,35 @@ func ShowArgs() {
 	for i := 0; i < flag.NArg(); i++ {
 		Debug("= 参数 %d: %s\n", i+1, flag.Arg(i))
 	}
+}
+
+var plog_level *int
+
+func init() {
+	IsDebug = GetParamBool("log_fdebug", false)
+	plog_level = flag.IntP("log_level", "l", 4, "设置日志级别（0-7)，数字越大日志越详细。")
+}
+
+func StartLogger() {
+	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
+	log_level := GetParamInt("log_level", *plog_level)
+
+	// 如果log_level大于LevelDebug或者小于LevelEmergency，则将log_level设置为LevelNotice
+	if log_level > LevelDebug || log_level < LevelEmergency {
+		log_level = LevelNotice
+	}
+
+	// 从参数中获取log_server的值，如果未设置则使用空字符串
+	log_server := GetParamString("log_server", "", "")
+	// 从参数中获取log_name的值，如果未设置则使用"tea4go"
+	log_name := GetParamString("log_name", "", "tea4go")
+
+	// 如果log_server不为空，则设置日志连接信息
+	if strings.TrimSpace(log_server) != "" {
+		// 设置日志连接信息，包括地址、级别和名称
+		SetLogger("conn", fmt.Sprintf(`{"addr":"%s","level":%d,"name":"%s"}`, log_server, log_level, log_name))
+	}
+
+	// 设置控制台日志信息，包括颜色输出和级别
+	SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d}`, log_level))
 }

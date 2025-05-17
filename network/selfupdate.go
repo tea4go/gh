@@ -16,12 +16,14 @@ import (
 	"github.com/k0kubun/go-ansi"
 	"github.com/minio/selfupdate"
 	"github.com/schollz/progressbar/v3"
+	flag "github.com/spf13/pflag"
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/utils"
 )
 
 var AppName string
 var AppVersion string
+var BuildTime string
 var VerServer string = "http://nj.yj2025.icu:23432" // 更新服务器基础URL
 
 type progressReader struct {
@@ -37,11 +39,24 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-func SetAppVersion(appname, appver string) {
+func SetAppVersion(appname, appver, isbeta, buildtime string) {
 	// 设置应用程序名称
 	AppName = appname
 	// 设置应用程序版本
 	AppVersion = appver
+	// 设置应用程序编译时间
+	BuildTime = buildtime
+	isbeta = strings.ToLower(isbeta)
+	if isbeta != "" && isbeta != "false" && isbeta != "f" && buildtime != "" {
+		const inputLayout = "2006-01-02(15:04:05)"
+		t, err := time.Parse(inputLayout, buildtime)
+		if err == nil {
+			const outputLayout = "20060102_150405"
+			AppVersion = fmt.Sprintf("%s_%s", appver, t.Format(outputLayout))
+		} else {
+			AppVersion = fmt.Sprintf("%s_%s", appver, buildtime)
+		}
+	}
 }
 
 func SetVerServer(serv_url string) {
@@ -58,12 +73,15 @@ func SetVerServer(serv_url string) {
 
 // PublishSoftware 发布软件函数
 func PublishSoftware() error {
-	logs.Info("发布新版本 (%s)", utils.RunFileName())
-	logs.Debug("= 程序名：%s", AppName)
-	logs.Debug("= 版本号：%s", AppVersion)
-	logs.Debug("= 操作系统：%s", runtime.GOOS)
-	logs.Debug("= 系统架构：%s", runtime.GOARCH)
-	logs.Debug("= 更新服务器：%s", VerServer)
+	// 超级管理员权限验证
+	superadmin := logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
+	if !superadmin {
+		return fmt.Errorf("没有版本发布的权限")
+	}
+
+	fmt.Printf("准备发布新版本 ...... %s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("= 文件名：%s 编译时间：%s\n", utils.RunFileName(), BuildTime)
+	fmt.Printf("= 发布到：%s/update/%s\n", VerServer, AppName)
 
 	// 创建一个缓冲区用于存储multipart表单数据
 	var requestBody bytes.Buffer
@@ -79,15 +97,15 @@ func PublishSoftware() error {
 
 	puturl := `发布的地址：
 curl -X POST ^
-	-F "version=%s" ^
-	-F "appname=%s" ^
-	-F "verpath=/update/%s" ^
-	-F "GOOS=%s" ^
-	-F "GOARCH=%s" ^
-	-F "key=tvQ2YthGoV2wymjWVkyc" ^
-	-F "verfile=@%s" ^
-	%s/publish ^
-	| jq`
+ -F "version=%s" ^
+ -F "appname=%s" ^
+ -F "verpath=/update/%s" ^
+ -F "GOOS=%s" ^
+ -F "GOARCH=%s" ^
+ -F "key=tvQ2YthGoV2wymjWVkyc" ^
+ -F "verfile=@%s" ^
+ %s/publish ^
+ | jq`
 	logs.Debug(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, utils.RunFileName(), VerServer)
 
 	// 添加文件
@@ -101,7 +119,37 @@ curl -X POST ^
 	if err != nil {
 		return fmt.Errorf("创建表单文件错误，%v", err)
 	}
-	_, err = io.Copy(part, file)
+
+	// 创建进度条 - 修正后的版本
+	bar := progressbar.NewOptions64(
+		utils.GetFileSize(os.Args[0]),
+		progressbar.OptionSetDescription("正在发布中 ......"),
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(15),
+		progressbar.OptionThrottle(1000*time.Millisecond),
+		progressbar.OptionShowCount(),
+		progressbar.OptionOnCompletion(func() {
+			fmt.Fprint(os.Stderr, "\n发布新版本 ...... OK\n")
+		}),
+		progressbar.OptionSpinnerType(14),
+		progressbar.OptionFullWidth(),
+		progressbar.OptionSetRenderBlankState(true),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+	// 包装响应体以跟踪进度
+	progressReader := &progressReader{
+		reader: file,
+		bar:    bar,
+	}
+	_, err = io.Copy(part, progressReader)
 	if err != nil {
 		return fmt.Errorf("复制文件内容错误，%v", err)
 	}
@@ -186,7 +234,7 @@ func CheckForUpdate() (string, string, string, error) {
 		return latestVersion, checksum, downurl, nil
 	}
 
-	logs.Debug("当前已经是最新版本 %s -> %s", AppVersion, latestVersion)
+	logs.Debug("当前已经是最新版本： %s，编译时间：%s，服务器版本： %s ", AppVersion, BuildTime, latestVersion)
 	return "", "", "", nil
 }
 
@@ -256,10 +304,17 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 		return fmt.Errorf("无效的文件。")
 	}
 
+	// 获取更新文件
+	resp, err = client.Get(downurl)
+	if err != nil {
+		return fmt.Errorf("下载新版本错误，%v", err)
+	}
+	defer resp.Body.Close()
+
 	// 创建进度条 - 修正后的版本
 	bar := progressbar.NewOptions64(
 		fileSize,
-		progressbar.OptionSetDescription("下载新版本 ...... "),
+		progressbar.OptionSetDescription("下载新版本 ......"),
 		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
@@ -280,14 +335,6 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 			BarEnd:        "]",
 		}),
 	)
-
-	// 获取更新文件
-	resp, err = client.Get(downurl)
-	if err != nil {
-		return fmt.Errorf("下载新版本错误，%v", err)
-	}
-	defer resp.Body.Close()
-
 	// 包装响应体以跟踪进度
 	progressReader := &progressReader{
 		reader: resp.Body,
@@ -380,4 +427,89 @@ func compareVersions(v1, v2 string) int {
 	// 实际项目中可能需要更复杂的版本比较
 	// 可以使用第三方库如 hashicorp/go-version
 	return strings.Compare(v1, v2)
+}
+
+var pskipVersion *bool
+
+var pversion *bool
+var pupgrade *bool
+var ppublish *bool
+var phelp *bool
+
+func init() {
+	pskipVersion = flag.BoolP(`skip_version`, ``, false, `是否跳过版本检测。`)
+	pversion = flag.BoolP("version", "v", false, "显示版本号。")
+	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
+	ppublish = flag.BoolP("publish", "", false, "发布新版本。")
+
+	phelp = flag.BoolP(`help`, `h`, false, `显示帮助。`)
+}
+
+func StartSelfUpdate() {
+	skipVersion := logs.GetParamBool("skip_version", *pskipVersion)
+
+	// 显示版本信息
+	if *pversion {
+		fmt.Println(AppVersion)
+		os.Exit(0)
+	}
+
+	// 显示帮助信息
+	if *phelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if *ppublish {
+		//curl -X POST ^
+		//  -F "version=v3.0.7_20250427" ^
+		//  -F "verpath=/update/F112" ^
+		//  -F "verfile=@C:\DevDisk\Other\MiniXplorer\f112.exe" ^
+		//  http://localhost:8080/publish?key=tvQ2YthGoV2wymjWVkyc ^
+		//  | jq
+		err := PublishSoftware()
+		if err != nil {
+			fmt.Printf("发布新版本失败，%v", err)
+		}
+
+		os.Exit(0)
+	}
+
+	if !skipVersion {
+		latest, checksum, downurl, err := CheckForUpdate()
+		if err != nil {
+			fmt.Println(err)
+
+		} else if latest != "" {
+			fmt.Println("发现新版本！")
+			fmt.Println("=============================================================")
+			fmt.Printf("= 最新版本：%-27s SHA256：%s \n", latest, checksum)
+			fmt.Printf("= 当前版本：%-27s SHA256：%s Build : %s\n", AppVersion, SimpleCalcChecksum(), BuildTime)
+			fmt.Printf("= 下载地址：%s\n", downurl)
+			fmt.Println("=============================================================")
+
+			//#region 自动升级
+			err := DoUpdateWithProgress(downurl, checksum)
+			if err != nil {
+				fmt.Printf("新版本升级失败，%s\n", err)
+
+			} else {
+				fmt.Println("已经升级到新版本，既将退出程序，请重新启动程序！")
+			}
+			//#endregion
+
+			os.Exit(0)
+			return
+		}
+
+		//如果是检测版本，则退出程序
+		if *pupgrade {
+			if latest == "" {
+				fmt.Println("当前已经是新版本！")
+				fmt.Printf("= 当前版本：%-27s SHA256: %s\n", AppVersion, SimpleCalcChecksum())
+				fmt.Printf("= 版本文件：%s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
+			}
+			os.Exit(0)
+		}
+	}
 }
