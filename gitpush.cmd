@@ -1,6 +1,4 @@
 @echo off
-chcp 65001
-cls
 
 setlocal
 echo.
