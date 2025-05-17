@@ -23,7 +23,7 @@ git status
 git add .
 git commit -m "auto::bugfix"
 git push origin dev
-
+git push
 
 echo.
 echo 所有 tea4go/gh 码提交完成!
