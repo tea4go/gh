@@ -286,13 +286,15 @@ func ShowArgs() {
 }
 
 var plog_level *int
+var plog_name *string
 
 func init() {
 	IsDebug = GetParamBool("log_fdebug", false)
 	plog_level = flag.IntP("log_level", "l", 4, "设置日志级别（0-7)，数字越大日志越详细。")
+	plog_name = flag.StringP(`log_name`, `N`, ``, `日志名称`)
 }
 
-func StartLogger() {
+func StartLogger(log_names ...string) {
 	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
 	log_level := GetParamInt("log_level", *plog_level)
 
@@ -302,10 +304,12 @@ func StartLogger() {
 	}
 
 	// 从参数中获取log_server的值，如果未设置则使用空字符串
-	log_server := GetParamString("log_server", "", "")
+	log_server := GetParamString("log_server", "", *plog_name)
 	// 从参数中获取log_name的值，如果未设置则使用"tea4go"
 	log_name := GetParamString("log_name", "", "tea4go")
-
+	if len(log_names) > 0 {
+		log_name = log_names[0]
+	}
 	// 如果log_server不为空，则设置日志连接信息
 	if strings.TrimSpace(log_server) != "" {
 		// 设置日志连接信息，包括地址、级别和名称
