@@ -445,6 +445,10 @@ func init() {
 	phelp = flag.BoolP(`help`, `h`, false, `显示帮助。`)
 }
 
+func SetSkipVersion() {
+	*pskipVersion = true
+}
+
 func StartSelfUpdate() {
 	skipVersion := logs.GetParamBool("skip_version", *pskipVersion)
 
