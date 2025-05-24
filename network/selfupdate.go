@@ -24,7 +24,9 @@ import (
 var AppName string
 var AppVersion string
 var BuildTime string
-var VerServer string = "http://nj.yj2025.icu:23432" // 更新服务器基础URL
+var VerServer string
+var VerServerA string = "http://nj.yj2025.icu:23432" // 更新服务器A
+var VerServerB string = "http://hk.yj2025.icu:8118"  // 更新服务器B
 
 type progressReader struct {
 	reader io.Reader
@@ -430,7 +432,7 @@ func compareVersions(v1, v2 string) int {
 }
 
 var pskipVersion *bool
-
+var pVerServer *string
 var pversion *bool
 var pupgrade *bool
 var ppublish *bool
@@ -443,6 +445,7 @@ func init() {
 	ppublish = flag.BoolP("publish", "", false, "发布新版本。")
 
 	phelp = flag.BoolP(`help`, `h`, false, `显示帮助。`)
+	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 }
 
 func SetSkipVersion() {
@@ -451,6 +454,7 @@ func SetSkipVersion() {
 
 func StartSelfUpdate() {
 	skipVersion := logs.GetParamBool("skip_version", *pskipVersion)
+	VerServer = logs.GetParamString("update_server", *pVerServer, VerServerB)
 
 	// 显示版本信息
 	if *pversion {
