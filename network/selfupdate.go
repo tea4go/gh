@@ -439,7 +439,7 @@ var ppublish *bool
 var phelp *bool
 
 func init() {
-	pskipVersion = flag.BoolP(`skip_version`, ``, false, `是否跳过版本检测。`)
+	pskipVersion = flag.BoolP(`skip_version`, ``, true, `是否跳过版本检测。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
 	ppublish = flag.BoolP("publish", "", false, "发布新版本。")
@@ -483,7 +483,7 @@ func StartSelfUpdate() {
 		os.Exit(0)
 	}
 
-	if !skipVersion {
+	if !skipVersion || *pupgrade {
 		latest, checksum, downurl, err := CheckForUpdate()
 		if err != nil {
 			fmt.Println(err)
