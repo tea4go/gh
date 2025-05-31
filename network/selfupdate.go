@@ -2,6 +2,7 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -24,9 +25,7 @@ import (
 var AppName string
 var AppVersion string
 var BuildTime string
-var VerServer string
-var VerServerA string = "http://nj.yj2025.icu:23432" // 更新服务器A
-var VerServerB string = "http://hk.yj2025.icu:8118"  // 更新服务器B
+var VerServers = []string{"http://nj.yj2025.icu:23432", "http://hk.yj2025.icu:8118", "http://192.168.193.78:8118"}
 
 type progressReader struct {
 	reader io.Reader
@@ -61,11 +60,6 @@ func SetAppVersion(appname, appver, isbeta, buildtime string) {
 	}
 }
 
-func SetVerServer(serv_url string) {
-	// 设置版本服务器地址
-	VerServer = serv_url
-}
-
 //curl -X POST ^
 //  -F "version=v3.0.7_20250427" ^
 //  -F "verpath=/update/F112" ^
@@ -74,7 +68,7 @@ func SetVerServer(serv_url string) {
 //  | jq
 
 // PublishSoftware 发布软件函数
-func PublishSoftware() error {
+func PublishSoftware(url string) error {
 	// 超级管理员权限验证
 	superadmin := logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
 	if !superadmin {
@@ -83,7 +77,7 @@ func PublishSoftware() error {
 
 	fmt.Printf("准备发布新版本 ...... %s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
 	fmt.Printf("= 文件名：%s 编译时间：%s\n", utils.RunFileName(), BuildTime)
-	fmt.Printf("= 发布到：%s/update/%s\n", VerServer, AppName)
+	fmt.Printf("= 发布到：%s/update/%s\n", url, AppName)
 
 	// 创建一个缓冲区用于存储multipart表单数据
 	var requestBody bytes.Buffer
@@ -94,7 +88,7 @@ func PublishSoftware() error {
 	_ = writer.WriteField("verpath", "/update/"+AppName)
 	_ = writer.WriteField("GOOS", runtime.GOOS)
 	_ = writer.WriteField("GOARCH", runtime.GOARCH)
-	_ = writer.WriteField("servurl", VerServer)
+	_ = writer.WriteField("servurl", url)
 	_ = writer.WriteField("key", "tvQ2YthGoV2wymjWVkyc")
 
 	puturl := `发布的地址：
@@ -108,7 +102,8 @@ curl -X POST ^
  -F "verfile=@%s" ^
  %s/publish ^
  | jq`
-	logs.Debug(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, utils.RunFileName(), VerServer)
+	puturl = fmt.Sprintf(puturl+"\n", AppVersion, AppName, AppName, runtime.GOOS, runtime.GOARCH, utils.RunFileName(), url)
+	logs.FDebug(puturl)
 
 	// 添加文件
 	file, err := os.Open(utils.RunFileName())
@@ -162,7 +157,7 @@ curl -X POST ^
 	}
 
 	// 创建请求
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/publish", VerServer), &requestBody)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/publish", url), &requestBody)
 	if err != nil {
 		return fmt.Errorf("创建请求错误，%v", err)
 	}
@@ -186,13 +181,13 @@ curl -X POST ^
 }
 
 // checkForUpdate 检查是否有新版本可用
-func CheckForUpdate() (string, string, string, error) {
+func CheckForUpdate(url string) (string, string, string, error) {
 	if AppName == "" || AppVersion == "" {
 		return "", "", "", fmt.Errorf("未设置AppName或AppVersion")
 	}
 
 	// 获取版本信息文件
-	downurl := fmt.Sprintf("%s/update/%s/%s.%s.%s.txt", VerServer, AppName, AppName, runtime.GOOS, runtime.GOARCH)
+	downurl := fmt.Sprintf("%s/update/%s/%s.%s.%s.txt", url, AppName, AppName, runtime.GOOS, runtime.GOARCH)
 	logs.Debug("检测新版本，版本地址: %s", downurl)
 
 	resp, err := http.Get(downurl)
@@ -228,7 +223,7 @@ func CheckForUpdate() (string, string, string, error) {
 
 	// 检查是否比当前版本新
 	if compareVersions(latestVersion, AppVersion) > 0 {
-		downurl = fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", VerServer, AppName, AppName, runtime.GOOS, runtime.GOARCH, latestVersion)
+		downurl = fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", url, AppName, AppName, runtime.GOOS, runtime.GOARCH, latestVersion)
 		if runtime.GOOS == "windows" {
 			downurl += ".exe"
 		}
@@ -437,13 +432,17 @@ var pversion *bool
 var pupgrade *bool
 var ppublish *bool
 var phelp *bool
+var SuperAdmin bool
 
 func init() {
+	SuperAdmin = logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
+
 	pskipVersion = flag.BoolP(`skip_version`, ``, true, `是否跳过版本检测。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
-	ppublish = flag.BoolP("publish", "", false, "发布新版本。")
-
+	if SuperAdmin {
+		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
+	}
 	phelp = flag.BoolP(`help`, `h`, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 }
@@ -454,8 +453,7 @@ func SetSkipVersion() {
 
 func StartSelfUpdate() {
 	skipVersion := logs.GetParamBool("skip_version", *pskipVersion)
-	VerServer = logs.GetParamString("update_server", *pVerServer, VerServerB)
-
+	diyurl := logs.GetParamString("update_server", *pVerServer, "")
 	// 显示版本信息
 	if *pversion {
 		fmt.Println(AppVersion)
@@ -468,26 +466,44 @@ func StartSelfUpdate() {
 		os.Exit(0)
 	}
 
-	if *ppublish {
+	// 增加自定义版本服务器地址
+	if diyurl != "" {
+		VerServers = append(VerServers, diyurl)
+	}
+
+	if ppublish != nil && *ppublish {
+		VerServers = CheckVerservers(VerServers, len(VerServers))
+		if len(VerServers) == 0 {
+			fmt.Println("所有的版本服务器都失效！")
+			os.Exit(0)
+		}
+
 		//curl -X POST ^
 		//  -F "version=v3.0.7_20250427" ^
 		//  -F "verpath=/update/F112" ^
 		//  -F "verfile=@C:\DevDisk\Other\MiniXplorer\f112.exe" ^
 		//  http://localhost:8080/publish?key=tvQ2YthGoV2wymjWVkyc ^
 		//  | jq
-		err := PublishSoftware()
-		if err != nil {
-			fmt.Printf("发布新版本失败，%v", err)
+		for _, v := range VerServers {
+			err := PublishSoftware(v)
+			if err != nil {
+				fmt.Printf("发布新版本失败，%v", err)
+			}
+			fmt.Println("")
 		}
-
 		os.Exit(0)
 	}
 
 	if !skipVersion || *pupgrade {
-		latest, checksum, downurl, err := CheckForUpdate()
+		VerServers = CheckVerservers(VerServers, 1)
+		if len(VerServers) == 0 {
+			fmt.Println("所有的版本服务器都失效！")
+			os.Exit(0)
+		}
+
+		latest, checksum, downurl, err := CheckForUpdate(VerServers[0])
 		if err != nil {
 			fmt.Println(err)
-
 		} else if latest != "" {
 			fmt.Println("发现新版本！")
 			fmt.Println("=============================================================")
@@ -518,6 +534,94 @@ func StartSelfUpdate() {
 				fmt.Printf("= 版本文件：%s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
 			}
 			os.Exit(0)
+		}
+	}
+}
+
+func CheckVerserver(urls []string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	results := make(chan string, 1)
+	for _, url := range urls {
+		go func(u string) {
+			logs.Debug("===> 检测版本服务器可用(%s)", u)
+			req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
+			if err != nil {
+				return
+			}
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+
+			logs.Debug("<=== 可用服务器(%s - %d)", u, resp.StatusCode)
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				select {
+				case results <- u:
+				default:
+				}
+			}
+		}(url)
+	}
+	select {
+	case res := <-results:
+		return res
+	case <-ctx.Done():
+		return ""
+	}
+}
+
+// 检测版本服务器是否有效，输入：多个地址，返回个数，输出：有效地址。
+// 注： 改进版本，增加超时处理和并发控制
+
+func CheckVerservers(urls []string, count int) []string {
+	done := make(chan struct{})
+	results := make(chan string)
+
+	// 设置总超时时间为 4 秒
+	go func() {
+		time.Sleep(4 * time.Second)
+		close(done)
+	}()
+
+	// 每个请求的超时时间为 3 秒，确保在总超时前完成
+	client := &http.Client{
+		Timeout: 3 * time.Second,
+	}
+
+	// 启动协程处理每个 URL 的请求
+	for _, url := range urls {
+		go func(u string) {
+			logs.Debug("===> 检测版本服务器可用(%s)", u)
+			resp, err := client.Get(u)
+			if err != nil {
+				return
+			}
+			defer resp.Body.Close()
+
+			logs.Debug("<=== 可用服务器(%s - %d)", u, resp.StatusCode)
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				select {
+				case results <- u: // 成功时将 URL 发送到结果通道
+				case <-done: // 超时后放弃发送
+				}
+			}
+		}(url)
+	}
+	// 收集结果，直到超时触发
+	var successful []string
+	for {
+		select {
+		case url := <-results:
+			successful = append(successful, url)
+			count -= 1
+			if count <= 0 {
+				return successful
+			}
+		case <-done:
+			return successful
 		}
 	}
 }

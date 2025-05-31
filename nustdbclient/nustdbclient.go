@@ -28,9 +28,10 @@ type TNustDBList struct {
 }
 
 type TNustDBClient struct {
-	db     *nutsdb.DB
-	bucket string
-	head   string
+	db          *nutsdb.DB
+	bucket      string
+	head        string
+	maxListSize int
 }
 
 var instance *TNustDBClient
@@ -85,8 +86,9 @@ func InitInstance(bucket_name, db_path string, re_new bool) (*TNustDBClient, err
 		}
 
 		instance = &TNustDBClient{
-			db:     db,
-			bucket: bucket_name,
+			db:          db,
+			bucket:      bucket_name,
+			maxListSize: 100,
 		}
 
 	}
@@ -141,9 +143,18 @@ func (d *TNustDBClient) GetBucketName() string {
 func (s *TNustDBClient) LPush(keyname string, value string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
+			count, _ := tx.LSize(s.bucket, []byte(s.head+keyname))
+			if count >= s.maxListSize {
+				for i := count; i >= s.maxListSize; i-- {
+					tx.RPop(s.bucket, []byte(s.head+keyname))
+				}
+			}
+			logs.FDebug("LPush(%s) : %s = [%s]", s.bucket, s.head+keyname, value)
 			return tx.LPush(s.bucket, []byte(s.head+keyname), []byte(value))
 		})
-
+	if err != nil {
+		logs.FDebug("LPush(%s) : %s = [%s] 失败，%v", s.bucket, s.head+keyname, value, err)
+	}
 	return err
 }
 
@@ -154,12 +165,20 @@ func (s *TNustDBClient) LPushByBucket(bucket_name, keyname string, value string)
 
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
+			count, _ := tx.LSize(bucket_name, []byte(s.head+keyname))
+			if count >= s.maxListSize {
+				for i := count; i >= s.maxListSize; i-- {
+					tx.RPop(bucket_name, []byte(s.head+keyname))
+				}
+			}
+
 			logs.FDebug("LPushByBucket(%s) : %s = [%s]", bucket_name, s.head+keyname, value)
 			return tx.LPush(bucket_name, []byte(s.head+keyname), []byte(value))
 		})
 	if err != nil {
 		logs.FDebug("LPushByBucket(%s) : %s = [%s] 失败，%v", bucket_name, s.head+keyname, value, err)
 	}
+
 	return err
 }
 
@@ -178,6 +197,32 @@ func (s *TNustDBClient) LRangeByBucket(bucket_name, keyname string) (items []str
 	return
 }
 
+func (s *TNustDBClient) LUpdateMaxValue(bucket_name string) (err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	s.db.Update(
+		func(tx *nutsdb.Tx) (err error) {
+			err = tx.LKeys(bucket_name,
+				"*",
+				func(key string) bool {
+					// 整理列表数据， 限制最大长度，防止内存溢出
+					count, _ := tx.LSize(bucket_name, []byte(key))
+					if count > s.maxListSize {
+						logs.Debug("LGetAllValue(%s) - %s - 列表记录过多 %d->%d", bucket_name, key, count, s.maxListSize)
+						for i := count; i > s.maxListSize; i-- {
+							tx.RPop(bucket_name, []byte(key))
+						}
+					}
+					return true
+				})
+
+			return err
+		})
+
+	return
+}
 func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -185,20 +230,22 @@ func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, e
 
 	s.db.View(
 		func(tx *nutsdb.Tx) (err error) {
-			err = tx.LKeys(bucket_name, "*", func(key string) bool {
-				datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
-				if err != nil {
-					return false
-				}
+			err = tx.LKeys(bucket_name,
+				"*",
+				func(key string) bool {
+					datas, err := tx.LRange(bucket_name, []byte(key), 0, -1)
+					if err != nil {
+						return false
+					}
 
-				item := TNustDBList{}
-				item.Key = strings.ReplaceAll(key, s.head, "")
-				for _, v := range datas {
-					item.Value = append(item.Value, string(v))
-				}
-				items = append(items, item)
-				return true
-			})
+					item := TNustDBList{}
+					item.Key = strings.ReplaceAll(key, s.head, "")
+					for _, v := range datas {
+						item.Value = append(item.Value, string(v))
+					}
+					items = append(items, item)
+					return true
+				})
 
 			return err
 		})
@@ -206,11 +253,36 @@ func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, e
 	return
 }
 
+func (s *TNustDBClient) LSetMaxSize(maxSize int) {
+	s.maxListSize = maxSize
+}
+
+func (s *TNustDBClient) LGetMaxSize() int {
+	return s.maxListSize
+}
+
+func (s *TNustDBClient) LSize(bucket_name, keyname string) (count int, err error) {
+	if bucket_name == "" {
+		bucket_name = s.bucket
+	}
+
+	s.db.View(
+		func(tx *nutsdb.Tx) error {
+			if count, err = tx.LSize(bucket_name, []byte(s.head+keyname)); err != nil {
+				return err
+			} else {
+				logs.FDebug("LSize(%s) - %s = %d", bucket_name, s.head+keyname, count)
+			}
+			return nil
+		})
+	return
+}
+
 func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
 	}
-	logs.FDebug("LPrintf(%s) - Head:%s", bucket_name, s.head)
+	logs.FDebug("LPrintf(%s) - Head:%s", bucket_name, strings.ReplaceAll(s.head, "_", ""))
 	s.db.View(
 		func(tx *nutsdb.Tx) (err error) {
 			err = tx.LKeys(bucket_name, "*",
