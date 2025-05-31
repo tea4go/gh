@@ -121,6 +121,10 @@ func GetSafeInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	return instance
 }
 
+func (d *TNustDBClient) Merge() error {
+	return d.db.Merge()
+}
+
 func (d *TNustDBClient) GetHead() string {
 	return d.head
 }
