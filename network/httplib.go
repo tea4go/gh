@@ -1199,3 +1199,95 @@ func OpenWebManager(ports ...int) *http.ServeMux {
 	}(port, mux)
 	return mux
 }
+
+// 用户凭据
+var validUsers = map[string]string{}
+
+func SetUserAndPwd(AUser, APass string) {
+	AUser = strings.ToLower(AUser)
+	APass = strings.ToLower(APass)
+	logs.Debug("增加用户 (%s:%s)", AUser, APass)
+	for k, _ := range validUsers {
+		if k == AUser {
+			validUsers[k] = APass
+			return
+		}
+	}
+	validUsers[AUser] = APass
+}
+
+func SetBasicAuth(Auth string) {
+	Auth = strings.ToLower(Auth)
+	auths := strings.Split(Auth, ":")
+	if len(auths) == 2 {
+		auths[0] = strings.TrimSpace(auths[0])
+		auths[1] = strings.TrimSpace(auths[1])
+		logs.Debug("增加用户 (%s:%s)", auths[0], auths[1])
+		validUsers[auths[0]] = auths[1]
+	}
+}
+
+// 中间件函数，用于验证Basic Auth
+func BasicAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if len(validUsers) == 0 {
+			defer next(w, r)
+			return
+		}
+
+		// 从请求头获取Basic Auth凭据
+		stemp := w.Header().Get("Authorization")
+		username, password, ok := r.BasicAuth()
+
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			msg := fmt.Sprintf("鉴权失败(%s)", stemp)
+			http.Error(w, `{"error":401,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// 验证用户名和密码
+		username = strings.ToLower(username)
+		password = strings.ToLower(password)
+		validPassword, userExists := validUsers[username]
+		if !userExists || password != validPassword {
+			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
+			http.Error(w, `{"error":402,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// 验证通过，调用下一个处理器
+		defer next(w, r)
+	}
+}
+
+func BasicAuth2(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(validUsers) == 0 {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// 从请求头获取Basic Auth凭据
+		stemp := w.Header().Get("Authorization")
+		username, password, ok := r.BasicAuth()
+
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+			msg := fmt.Sprintf("鉴权失败(%s)", stemp)
+			http.Error(w, `{"error":401,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// 验证用户名和密码
+		validPassword, userExists := validUsers[username]
+		if !userExists || password != validPassword {
+			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
+			http.Error(w, `{"error":402,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			return
+		}
+
+		// 验证通过，调用下一个处理器
+		next.ServeHTTP(w, r)
+	})
+}
