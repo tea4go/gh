@@ -318,4 +318,5 @@ func StartLogger(log_names ...string) {
 
 	// 设置控制台日志信息，包括颜色输出和级别
 	SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d}`, log_level))
+	SetLevel(log_level)
 }
