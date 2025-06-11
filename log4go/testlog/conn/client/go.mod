@@ -3,9 +3,9 @@ module testlog
 go 1.22
 
 replace (
+	github.com/tea4go/application/common => C:\MyWork\gitcode\application\common
 	// WinPC
 	github.com/tea4go/gh => C:\MyWork\gitcode\gh
-	github.com/tea4go/application/common => C:\MyWork\gitcode\application\common
 
 // WhitePC
 //github.com/tea4go/gh => /home/share/mycode/gitcode/gh
