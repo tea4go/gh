@@ -304,9 +304,9 @@ func StartLogger(log_names ...string) {
 	}
 
 	// 从参数中获取log_server的值，如果未设置则使用空字符串
-	log_server := GetParamString("log_server", "", *plog_name)
+	log_server := GetParamString("log_server", "", "")
 	// 从参数中获取log_name的值，如果未设置则使用"tea4go"
-	log_name := GetParamString("log_name", "", "tea4go")
+	log_name := GetParamString("log_name", "tea4go", *plog_name)
 	if len(log_names) > 0 {
 		log_name = log_names[0]
 	}
