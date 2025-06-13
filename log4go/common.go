@@ -79,16 +79,16 @@ func GetParamString(name string, flag_value, default_value string) string {
 	//从环境变量读取参数
 	env_value := os.Getenv(name)
 
-	if env_value != "" {
-		return env_value
+	if strings.TrimSpace(env_value) != "" {
+		return strings.TrimSpace(env_value)
 	}
 
 	//从命令行读参数
-	if default_value != "" && flag_value == "" {
-		return default_value
+	if strings.TrimSpace(default_value) != "" && strings.TrimSpace(flag_value) == "" {
+		return strings.TrimSpace(default_value)
 	}
 
-	return flag_value
+	return strings.TrimSpace(flag_value)
 }
 
 func GetParamInt(name string, flag_value int) int {
@@ -297,6 +297,7 @@ func init() {
 func StartLogger(log_names ...string) {
 	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
 	log_level := GetParamInt("log_level", *plog_level)
+	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_name"), *plog_level)
 
 	// 如果log_level大于LevelDebug或者小于LevelEmergency，则将log_level设置为LevelNotice
 	if log_level > LevelDebug || log_level < LevelEmergency {
@@ -305,9 +306,13 @@ func StartLogger(log_names ...string) {
 
 	// 从参数中获取log_server的值，如果未设置则使用空字符串
 	log_server := GetParamString("log_server", "", "")
+
 	// 从参数中获取log_name的值，如果未设置则使用"tea4go"
 	log_name := GetParamString("log_name", "tea4go", *plog_name)
-	if len(log_names) > 0 {
+	FDebug("GetParamString(\"log_name\",Env[%s],Default[%s],Param[%s])", os.Getenv("log_name"), "tea4go", *plog_name)
+
+	if (len(log_names) > 0) && (log_names[0] != "") {
+		FDebug("SetLogName(%s)", log_names[0])
 		log_name = log_names[0]
 	}
 	// 如果log_server不为空，则设置日志连接信息
