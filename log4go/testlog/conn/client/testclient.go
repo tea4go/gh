@@ -49,6 +49,7 @@ func main() {
 	log.SetLevel(*loglevel)
 
 	fmt.Printf("Start Log4go Client ...... (%s:%d)\n", *host, *port)
+	fmt.Printf("= 开启 %d 个线程，每个线程执行 %d 批次日志。\n", *thread, *batch)
 	fmt.Println("...... 请按 Ctrl+C 结果 ......")
 	fmt.Println("====================================================================")
 
@@ -73,6 +74,6 @@ func main() {
 		}(b)
 		time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 	}
-	log.Close()
 	wg.Wait()
+	log.Close()
 }
