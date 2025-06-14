@@ -443,7 +443,7 @@ func init() {
 	if SuperAdmin {
 		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
 	}
-	phelp = flag.BoolP(`help`, `h`, false, `显示帮助。`)
+	phelp = flag.BoolP(`help`, ``, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 }
 
