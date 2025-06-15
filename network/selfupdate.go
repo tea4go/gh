@@ -611,7 +611,7 @@ func CheckVerservers(urls []string, count int) []string {
 				if !strings.Contains(string(body), "OK") {
 					return
 				}
-				logs.Debug("<=== 版本服务器(%s/state - %d)", u, resp.StatusCode)
+				logs.Info("<=== 版本服务器(%s/state - %s)", u, string(body))
 				select {
 				case results <- u: // 成功时将 URL 发送到结果通道
 				case <-done: // 超时后放弃发送
