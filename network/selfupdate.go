@@ -181,7 +181,7 @@ curl -X POST ^
 }
 
 // checkForUpdate 检查是否有新版本可用
-func CheckForUpdate(url string) (string, string, string, error) {
+func CheckForUpdate(url string, forced bool) (string, string, string, error) {
 	if AppName == "" || AppVersion == "" {
 		return "", "", "", fmt.Errorf("未设置AppName或AppVersion")
 	}
@@ -219,6 +219,16 @@ func CheckForUpdate(url string) (string, string, string, error) {
 	}
 	if latestVersion == "" {
 		return "", "", "", fmt.Errorf("版本文件格式不正确！")
+	}
+
+	// 强制升级
+	if forced {
+		downurl = fmt.Sprintf("%s/update/%s/%s.%s.%s.%s", url, AppName, AppName, runtime.GOOS, runtime.GOARCH, latestVersion)
+		if runtime.GOOS == "windows" {
+			downurl += ".exe"
+		}
+		logs.Debug("强制升级，下载地址: %s", downurl)
+		return latestVersion, checksum, downurl, nil
 	}
 
 	// 检查是否比当前版本新
@@ -426,7 +436,7 @@ func compareVersions(v1, v2 string) int {
 	return strings.Compare(v1, v2)
 }
 
-var pskipVersion *bool
+var pforced *bool //是否强制升级
 var pVerServer *string
 var pversion *bool
 var pupgrade *bool
@@ -437,7 +447,7 @@ var SuperAdmin bool
 func init() {
 	SuperAdmin = logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
 
-	pskipVersion = flag.BoolP(`skip_version`, ``, true, `是否跳过版本检测。`)
+	pforced = flag.BoolP(`forced`, ``, true, `是否强制升级。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
 	if SuperAdmin {
@@ -447,12 +457,11 @@ func init() {
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 }
 
-func SetSkipVersion() {
-	*pskipVersion = true
+func SetForced() {
+	*pforced = true
 }
 
 func StartSelfUpdate() {
-	skipVersion := logs.GetParamBool("skip_version", *pskipVersion)
 	diyurl := logs.GetParamString("update_server", *pVerServer, "")
 	// 显示版本信息
 	if *pversion {
@@ -494,14 +503,14 @@ func StartSelfUpdate() {
 		os.Exit(0)
 	}
 
-	if !skipVersion || *pupgrade {
+	if *pupgrade {
 		VerServers = CheckVerservers(VerServers, 1)
 		if len(VerServers) == 0 {
 			fmt.Println("所有的版本服务器都失效！")
 			os.Exit(0)
 		}
 
-		latest, checksum, downurl, err := CheckForUpdate(VerServers[0])
+		latest, checksum, downurl, err := CheckForUpdate(VerServers[0], *pforced)
 		if err != nil {
 			fmt.Println(err)
 		} else if latest != "" {
@@ -611,7 +620,7 @@ func CheckVerservers(urls []string, count int) []string {
 				if !strings.Contains(string(body), "OK") {
 					return
 				}
-				logs.Info("<=== 版本服务器(%s/state - %s)", u, string(body))
+				logs.Info("<=== 版本服务器(%s/state - %d)", u, resp.StatusCode)
 				select {
 				case results <- u: // 成功时将 URL 发送到结果通道
 				case <-done: // 超时后放弃发送
