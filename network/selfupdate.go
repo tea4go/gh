@@ -25,7 +25,7 @@ import (
 var AppName string
 var AppVersion string
 var BuildTime string
-var VerServers = []string{"http://nj.yj2025.icu:23432", "http://hk.yj2025.icu:8118", "http://192.168.193.78:8118"}
+var VerServers = []string{"http://192.168.193.78:8118", "http://nj.yj2025.icu:23432", "http://hk.yj2025.icu:8118"}
 
 type progressReader struct {
 	reader io.Reader
@@ -609,6 +609,7 @@ func CheckVerservers(urls []string, count int) []string {
 				}
 			}
 		}(url)
+		time.Sleep(100 * time.Millisecond)
 	}
 	// 收集结果，直到超时触发
 	var successful []string
