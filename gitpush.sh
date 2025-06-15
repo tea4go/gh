@@ -9,7 +9,7 @@ printf "\n"
 # 检查是否有未暂存的修改
 git diff --quiet
 if [ $? -ne 0 ]; then
-    :: 检查是否有已暂存但未提交的修改
+    # 检查是否有已暂存但未提交的修改
     git diff --cached --quiet
     if [ $? -ne 0 ]; then
         echo 没有代码修改，跳过提交。
