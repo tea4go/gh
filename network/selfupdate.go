@@ -595,18 +595,29 @@ func CheckVerservers(urls []string, count int) []string {
 	for _, url := range urls {
 		go func(u string) {
 			logs.Debug("===> 检测版本服务器可用(%s)", u)
-			resp, err := client.Get(u)
+			resp, err := client.Get(u + "/state")
 			if err != nil {
 				return
 			}
 			defer resp.Body.Close()
 
-			logs.Debug("<=== 可用服务器(%s - %d)", u, resp.StatusCode)
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				// 读取响应
+				body, err := io.ReadAll(resp.Body)
+				if err != nil {
+					return
+				}
+
+				if !strings.Contains(string(body), "OK") {
+					return
+				}
+				logs.Debug("<=== 版本服务器(%s/state - %d)", u, resp.StatusCode)
 				select {
 				case results <- u: // 成功时将 URL 发送到结果通道
 				case <-done: // 超时后放弃发送
 				}
+			} else {
+				logs.Debug("<=== 版本服务器(%s/state - %d)", u, resp.StatusCode)
 			}
 		}(url)
 		time.Sleep(100 * time.Millisecond)
