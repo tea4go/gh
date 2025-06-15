@@ -447,7 +447,7 @@ var SuperAdmin bool
 func init() {
 	SuperAdmin = logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
 
-	pforced = flag.BoolP(`forced`, ``, true, `是否强制升级。`)
+	pforced = flag.BoolP(`forced`, ``, false, `是否强制升级。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
 	if SuperAdmin {
