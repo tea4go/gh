@@ -295,6 +295,8 @@ func init() {
 }
 
 func StartLogger(log_names ...string) {
+	var err error
+
 	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
 	log_level := GetParamInt("log_level", *plog_level)
 	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_name"), *plog_level)
@@ -318,10 +320,16 @@ func StartLogger(log_names ...string) {
 	// 如果log_server不为空，则设置日志连接信息
 	if strings.TrimSpace(log_server) != "" {
 		// 设置日志连接信息，包括地址、级别和名称
-		SetLogger("conn", fmt.Sprintf(`{"addr":"%s","level":%d,"name":"%s"}`, log_server, log_level, log_name))
+		err = SetLogger("conn", fmt.Sprintf(`{"addr":"%s","level":%d,"name":"%s"}`, log_server, log_level, log_name))
+		if err != nil {
+			FDebug("SetLogger(conn,%s,%d,%s) - %v", log_server, log_level, log_name, err)
+		}
 	}
 
 	// 设置控制台日志信息，包括颜色输出和级别
-	SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d}`, log_level))
+	err = SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d}`, log_level))
+	if err != nil {
+		FDebug("SetLogger(console,%d,%s) - %v", log_level, log_name, err)
+	}
 	SetLevel(log_level)
 }

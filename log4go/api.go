@@ -65,6 +65,14 @@ func SetLogger(adapter string, config ...string) error {
 	return nil
 }
 
+func DelLogger(adapter string) error {
+	err := gLogger.DelLogger(adapter)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Emergency logs a message at emergency level.
 func Emergency(f interface{}, v ...interface{}) {
 	gLogger.Emergency(formatLog(f, v...))

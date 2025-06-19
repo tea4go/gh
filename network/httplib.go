@@ -1206,7 +1206,7 @@ var validUsers = map[string]string{}
 func SetUserAndPwd(AUser, APass string) {
 	AUser = strings.ToLower(AUser)
 	APass = strings.ToLower(APass)
-	logs.Debug("增加用户 (%s:%s)", AUser, APass)
+	logs.Debug("增加用户 (%s:%s)", AUser, utils.GetShowPassword(APass))
 	for k, _ := range validUsers {
 		if k == AUser {
 			validUsers[k] = APass
@@ -1222,7 +1222,7 @@ func SetBasicAuth(Auth string) {
 	if len(auths) == 2 {
 		auths[0] = strings.TrimSpace(auths[0])
 		auths[1] = strings.TrimSpace(auths[1])
-		logs.Debug("增加用户 (%s:%s)", auths[0], auths[1])
+		logs.Debug("增加用户 (%s:%s)", auths[0], utils.GetShowPassword(auths[1]))
 		validUsers[auths[0]] = auths[1]
 	}
 }
@@ -1231,33 +1231,39 @@ func SetBasicAuth(Auth string) {
 func BasicAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if len(validUsers) == 0 {
-			defer next(w, r)
+			next(w, r)
 			return
 		}
 
+		var msg string
 		// 从请求头获取Basic Auth凭据
-		stemp := w.Header().Get("Authorization")
 		username, password, ok := r.BasicAuth()
-
+		//fmt.Println("username, password, ok := r.BasicAuth()", username, password, ok)
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-			msg := fmt.Sprintf("鉴权失败(%s)", stemp)
-			http.Error(w, `{"error":401,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			msg = "获取鉴权信息失败"
+			//logs.Error(msg)
+			http.Error(w, `{"errno":401,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}
+
+		logs.Debug("Http.BasicAuth() : 共有 %d 个可鉴权用户，传入参数：%s/%s", len(validUsers), username, password)
 
 		// 验证用户名和密码
 		username = strings.ToLower(username)
 		password = strings.ToLower(password)
 		validPassword, userExists := validUsers[username]
 		if !userExists || password != validPassword {
-			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
-			http.Error(w, `{"error":402,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			msg = fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
+			logs.Error(msg)
+			http.Error(w, `{"errno":402,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}
 
+		msg = "验证通过"
+		logs.Debug("Http.BasicAuth() : %s (%s/%s)", msg, username, password)
 		// 验证通过，调用下一个处理器
-		defer next(w, r)
+		next(w, r)
 	}
 }
 
@@ -1275,7 +1281,7 @@ func BasicAuth2(next http.Handler) http.Handler {
 		if !ok {
 			w.Header().Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
 			msg := fmt.Sprintf("鉴权失败(%s)", stemp)
-			http.Error(w, `{"error":401,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			http.Error(w, `{"errno":401,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}
 
@@ -1283,7 +1289,7 @@ func BasicAuth2(next http.Handler) http.Handler {
 		validPassword, userExists := validUsers[username]
 		if !userExists || password != validPassword {
 			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
-			http.Error(w, `{"error":402,"msg":"`+msg+`"}`, http.StatusUnauthorized)
+			http.Error(w, `{"errno":402,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}
 
