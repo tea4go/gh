@@ -285,6 +285,10 @@ func ShowArgs() {
 	}
 }
 
+func GetLogName() string {
+	return *plog_name
+}
+
 var plog_level *int
 var plog_name *string
 
