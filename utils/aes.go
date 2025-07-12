@@ -4,7 +4,12 @@ import (
 	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/hex"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -20,15 +25,14 @@ func (this *TAESEncrypt) Init(key_str string) {
 	this.ZeroPad = true
 	this.IV = []byte("zs_radius_server")
 }
-func (this *TAESEncrypt) Encrypt(strMesg string) ([]byte, error) {
 
+func (this *TAESEncrypt) Encrypt(strMesg string) ([]byte, error) {
 	aesBlockEncrypter, err := aes.NewCipher(this.Key)
 	if err != nil {
 		return nil, err
 	}
 
 	aesEncrypter := cipher.NewCBCEncrypter(aesBlockEncrypter, this.IV)
-
 	content := []byte(strMesg)
 	if this.ZeroPad {
 		content = this.ZeroPadding(content, aesBlockEncrypter.BlockSize())
@@ -40,13 +44,12 @@ func (this *TAESEncrypt) Encrypt(strMesg string) ([]byte, error) {
 	aesEncrypter.CryptBlocks(crypted, content)
 
 	//fmt.Printf("16进制加密结果： %x\n", crypted)
-	//fmt.Println("Base64加密结果:", base64.StdEncoding.EncodeToString(crypted))
+	//fmt.Printf("Base64加密结果： %s\n", base64.StdEncoding.EncodeToString(crypted))
 
 	return crypted, nil
 }
 
 func (this *TAESEncrypt) Decrypt(ciphertext string) ([]byte, error) {
-
 	aesBlockEncrypter, err := aes.NewCipher(this.Key) //选择加密算法
 	if err != nil {
 		return nil, err
@@ -120,4 +123,68 @@ func AesDecrypt(key, test_str string) (string, error) {
 	aes.Init(key)
 	pass, _ := aes.Decrypt(string(temp_text))
 	return string(pass), nil
+}
+
+// 生成密钥对文件，返回私钥和公钥字符串
+func GetPKCS1Key() (string, string, error) {
+	var prikey, pubkey string
+
+	// 生成 RSA 私钥
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", "", fmt.Errorf("密钥生成失败，%v", err)
+	}
+
+	// 编码私钥为 PKCS#1 DER 格式
+	privateDER := x509.MarshalPKCS1PrivateKey(privateKey)
+	privateBlock := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: privateDER,
+	}
+	prikey = string(pem.EncodeToMemory(privateBlock))
+
+	publicKey := &privateKey.PublicKey
+	// 编码公钥为 PKCS#1 DER 格式
+	publicDER := x509.MarshalPKCS1PublicKey(publicKey)
+	publicBlock := &pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: publicDER,
+	}
+	pubkey = string(pem.EncodeToMemory(publicBlock))
+
+	return prikey, pubkey, nil
+}
+
+// 将PEM格式的私钥转换为可用于验证JWT签名的RSA公钥对象。
+func ParsePriKeyBytes(pri_key []byte) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode(pri_key)
+
+	if block == nil {
+		return nil, errors.New("解析私钥失败")
+	}
+
+	// 解析PKCS1格式的私钥
+	pri_ret, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("解析PKCS1私钥出错，%v", err)
+	}
+
+	return pri_ret, nil
+}
+
+// 将PEM格式的公钥转换为可用于验证JWT签名的RSA公钥对象。
+func ParsePubKeyBytes(pub_key []byte) (*rsa.PublicKey, error) {
+	// 解码PEM格式的公钥数据
+	block, _ := pem.Decode(pub_key)
+	if block == nil {
+		return nil, errors.New("解析公钥失败")
+	}
+
+	// 解析PKCS1格式的公钥
+	pub_ret, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("解析PKCS1公钥出错，%v", err)
+	}
+
+	return pub_ret, nil
 }

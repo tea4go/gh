@@ -7,15 +7,19 @@ require (
 	github.com/dsoprea/go-exif v0.0.0-20230826092837-6579e82b732d
 	github.com/go-ldap/ldap/v3 v3.4.8
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/mdlayher/arp v0.0.0-20220512170110-6706a2966875
 	github.com/miekg/dns v1.1.56
+	github.com/minio/selfupdate v0.6.0
 	github.com/mozillazg/go-pinyin v0.20.0
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
 	github.com/nutsdb/nutsdb v1.0.4
 	github.com/openstandia/goldap/message v0.0.0-20191227184744-b5528a3af20f
 	github.com/pires/go-proxyproto v0.7.0
+	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
 	github.com/smartystreets/goconvey v1.8.1
+	github.com/spf13/pflag v1.0.5
 	go.etcd.io/etcd v3.3.27+incompatible
 	golang.org/x/image v0.15.0
 	golang.org/x/net v0.22.0
@@ -31,6 +35,7 @@ replace (
 )
 
 require (
+	aead.dev/minisign v0.2.0 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/antlabs/stl v0.0.1 // indirect
 	github.com/antlabs/timer v0.0.11 // indirect
@@ -62,11 +67,14 @@ require (
 	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
+	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118 // indirect
 	github.com/mdlayher/packet v1.0.0 // indirect
 	github.com/mdlayher/socket v0.2.1 // indirect
+	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.19.0 // indirect
+	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/smarty/assertions v1.15.0 // indirect
 	github.com/soheilhy/cmux v0.1.5 // indirect
@@ -80,7 +88,8 @@ require (
 	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
-	golang.org/x/sys v0.18.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/term v0.28.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20200513103714-09dca8ec2884 // indirect
