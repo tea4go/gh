@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package execplus
@@ -72,4 +73,7 @@ func (k *CmdPlus) SetUser(name string) (err error) {
 	}
 	k.SysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 	return nil
+}
+
+func (Self *CmdPlus) HideWindow() {
 }

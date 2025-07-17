@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"syscall"
 )
 
 var shell_name string = "cmd"
@@ -47,4 +48,12 @@ func CommandString(command string) *CmdPlus {
 // SetUser not support on windws
 func (Self *CmdPlus) SetUser(name string) (err error) {
 	return nil
+}
+
+func (Self *CmdPlus) HideWindow() {
+	// 在windows下不显示cmd窗口
+	if Self.Cmd.SysProcAttr == nil {
+		Self.Cmd.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	Self.Cmd.SysProcAttr.HideWindow = true
 }
