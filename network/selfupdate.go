@@ -445,7 +445,7 @@ var phelp *bool
 var SuperAdmin bool
 
 func init() {
-	SuperAdmin = logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
+	keyId := logs.GetParamString("BASH_KEY", "", "Null")
 
 	pforced = flag.BoolP(`forced`, ``, false, `是否强制升级。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
@@ -455,6 +455,7 @@ func init() {
 	}
 	phelp = flag.BoolP(`help`, ``, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
+	SuperAdmin = keyId == utils.KeyID
 }
 
 func SetForced() {

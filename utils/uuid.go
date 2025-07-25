@@ -25,6 +25,7 @@ const (
 	encoding   = "0123456789abcdefghijklmnopqrstuv" //使用小写字母存储base32编码的自定义版本。
 )
 
+var KeyID = "rfoMzV4D8O9owOET33vJ"
 var ErrInvalidID = errors.New("无效的ID")
 var objectIDCounter = randInt()
 var machineID = ReadMachineID(3)
@@ -40,7 +41,7 @@ func init() {
 	}
 }
 
-//获得主机ID
+// 获得主机ID
 func ReadMachineID(size int) []byte {
 	id := make([]byte, size)
 	if hostname, err := os.Hostname(); err == nil {
@@ -55,7 +56,7 @@ func ReadMachineID(size int) []byte {
 	return id
 }
 
-//生成随机数
+// 生成随机数
 func randInt() uint32 {
 	b := make([]byte, 3)
 	if _, err := rand.Reader.Read(b); err != nil {
