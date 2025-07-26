@@ -446,16 +446,17 @@ var SuperAdmin bool
 
 func init() {
 	keyId := logs.GetParamString("BASH_KEY", "", "Null")
-
 	pforced = flag.BoolP(`forced`, ``, false, `是否强制升级。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
-	if SuperAdmin {
-		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
-	}
 	phelp = flag.BoolP(`help`, ``, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 	SuperAdmin = keyId == utils.KeyID
+	logs.FDebug("SuperAdmin = %v", SuperAdmin)
+	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", os.Getenv("BASH_KEY"), "")
+	if SuperAdmin {
+		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
+	}
 }
 
 func SetForced() {
