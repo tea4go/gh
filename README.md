@@ -3,7 +3,7 @@
 # 生成版本标签
 
 ```
-git tag -a v1.0.6 -m "Version 1.0.6"
+git tag -a v1.2.2 -m "Version 1.2.2"
 git push origin --tags
 ```
 # 提交代码
