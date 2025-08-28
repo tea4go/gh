@@ -40,7 +40,7 @@ func SQLRunByUpdate(db_in *sql.DB, run_sql string, v ...interface{}) (int64, err
 	return update, err
 }
 
-//执行DDL语句，Oracle驱动不支持执行多个SQL语句，MySQL可以。需要拆分执行。
+// 执行DDL语句，Oracle驱动不支持执行多个SQL语句，MySQL可以。需要拆分执行。
 func SQLExecDDL(db_in *sql.DB, run_sql string, ignore bool) (err error) {
 	sql_texts := strings.Split(run_sql, ";")
 	if len(sql_texts) == 0 {
@@ -123,7 +123,7 @@ func SQLGetValues(db_in *sql.DB, query_sql string, v ...interface{}) ([]interfac
 	return scans, err
 }
 
-func SQLPrepared(db_in *sql.DB, query_sql string, v ...any) ([]*sql.ColumnType, error) {
+func SQLPrepared(db_in *sql.DB, query_sql string, v ...interface{}) ([]*sql.ColumnType, error) {
 	query, err := db_in.Query(query_sql, v...)
 	if err != nil {
 		return nil, err
