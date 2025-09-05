@@ -43,7 +43,7 @@ func main() {
 	logs.SetFDebug(*debug)
 	log := logs.NewLogger()
 	log.SetLogFuncCallDepth(3)
-	log.SetLogger("console")
+	log.SetLogger("console", `{"color":true,"level":7}`)
 	log.SetLogger("conn", fmt.Sprintf(`{"addr":"%s:%d","level":5,"name":"testlog"}`, *host, *port))
 	//log.SetLevel(*loglevel, "console")
 	log.SetLevel(*loglevel)

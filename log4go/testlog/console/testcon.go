@@ -8,7 +8,7 @@ func main() {
 	logs.SetFDebug(true)
 	log := logs.NewLogger()
 	log.SetLogFuncCallDepth(3)
-	log.SetLogger("console")
+	log.SetLogger("console", `{"color":true,"level":7}`)
 	log.SetLevel(logs.LevelDebug)
 
 	log.Emergency("TestLog (Emergency)")
