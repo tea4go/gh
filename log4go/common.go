@@ -304,7 +304,7 @@ func StartLogger(log_names ...string) {
 
 	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
 	log_level := GetParamInt("log_level", *plog_level)
-	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_name"), *plog_level)
+	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_level"), *plog_level)
 
 	// 如果log_level大于LevelDebug或者小于LevelEmergency，则将log_level设置为LevelNotice
 	if log_level > LevelDebug || log_level < LevelEmergency {
