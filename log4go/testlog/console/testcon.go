@@ -20,5 +20,4 @@ func main() {
 	log.Info("TestLog (Info)")
 	log.Debug("TestLog (Debug)")
 	log.Notice("--------------------------")
-
 }
