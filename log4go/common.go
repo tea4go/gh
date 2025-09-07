@@ -295,7 +295,7 @@ var plog_name *string
 
 func init() {
 	IsDebug = GetParamBool("log_fdebug", false)
-	plog_level = flag.IntP("log_level", "l", 4, "设置日志级别（0-7)，数字越大日志越详细。")
+	plog_level = flag.IntP("log_level", "l", 5, "设置日志级别（0-7)，数字越大日志越详细。")
 	plog_name = flag.StringP(`log_name`, `N`, ``, `日志名称`)
 }
 
