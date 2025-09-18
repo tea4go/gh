@@ -57,6 +57,7 @@ func main() {
 		fmt.Println("tail -f", logs_file_name)
 		return
 	}
+
 	if flag.NArg() >= 1 {
 		logtext := strings.Join(flag.Args(), " ")
 		logs.Notice("[%s] %s", appName, logtext)

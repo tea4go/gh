@@ -482,7 +482,7 @@ func StartSelfUpdate(avers ...string) {
 
 	// 增加自定义版本服务器地址
 	if diyurl != "" {
-		VerServers = append(VerServers, diyurl)
+		VerServers = []string{diyurl}
 	}
 
 	if ppublish != nil && *ppublish {
