@@ -25,7 +25,7 @@ import (
 var AppName string
 var AppVersion string
 var BuildTime string
-var VerServers = []string{"http://wc192.yj2025.icu:8118", "http://nj.yj2025.icu:23432", "http://wc8.yj2025.icu:8118", "http://wc47.yj2025.icu:8118"}
+var VerServers = []string{}
 
 type progressReader struct {
 	reader io.Reader
@@ -463,7 +463,10 @@ func SetForced() {
 	*pforced = true
 }
 
-func StartSelfUpdate() {
+func StartSelfUpdate(avers ...string) {
+	if len(avers) > 0 {
+		VerServers = append(VerServers, avers...)
+	}
 	diyurl := logs.GetParamString("update_server", *pVerServer, "")
 	// 显示版本信息
 	if *pversion {
@@ -483,6 +486,11 @@ func StartSelfUpdate() {
 	}
 
 	if ppublish != nil && *ppublish {
+		if len(VerServers) == 0 {
+			fmt.Println("没有可用的版本服务器！")
+			os.Exit(0)
+		}
+
 		VerServers = CheckVerservers(VerServers, len(VerServers))
 		if len(VerServers) == 0 {
 			fmt.Println("所有的版本服务器都失效！")
