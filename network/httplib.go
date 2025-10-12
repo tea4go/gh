@@ -1001,6 +1001,10 @@ func DownloadFile(url_str string, out_file string, conn_timeout, rw_timeout time
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return fmt.Errorf(resp.Status)
+	}
+
 	// 创建一个新的文件
 	out, err := os.Create(out_file)
 	if err != nil {

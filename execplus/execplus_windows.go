@@ -28,16 +28,28 @@ func Command(name string, arg ...string) *CmdPlus {
 }
 
 func CommandStringContext(ctx context.Context, command string) *CmdPlus {
+	ctx, cancel := context.WithCancel(ctx)
 	cmd := exec.CommandContext(ctx, shell_name, "/c", command)
 	cmd.Env = os.Environ()
 	return &CmdPlus{
-		Cmd: cmd,
+		Cmd:        cmd,
+		cancelFunc: cancel,
 	}
 }
 
 func CommandString(command string) *CmdPlus {
 	ctx, cancel := context.WithCancel(context.Background())
 	cmd := exec.CommandContext(ctx, shell_name, "/c", command)
+	cmd.Env = os.Environ()
+	return &CmdPlus{
+		Cmd:        cmd,
+		cancelFunc: cancel,
+	}
+}
+
+func PowerShellFile(psexe, psname string) *CmdPlus {
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd := exec.CommandContext(ctx, psexe, "-ExecutionPolicy", "Bypass", "-File", psname)
 	cmd.Env = os.Environ()
 	return &CmdPlus{
 		Cmd:        cmd,
