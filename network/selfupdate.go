@@ -69,6 +69,7 @@ func SetAppVersion(appname, appver, isbeta, buildtime string) {
 
 // PublishSoftware 发布软件函数
 func PublishSoftware(url string) error {
+	logs.Debug("准备发布新版本 ...... %s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
 	// 超级管理员权限验证
 	superadmin := logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
 	if !superadmin {
@@ -504,16 +505,19 @@ func StartSelfUpdate(avers ...string) {
 		//  http://localhost:8080/publish?key=xxx ^
 		//  | jq
 		for _, v := range VerServers {
+			logs.Notice("准备发布版本 %s", v)
 			err := PublishSoftware(v)
 			if err != nil {
 				fmt.Printf("发布新版本失败，%v", err)
 			}
 			fmt.Println("")
 		}
+		logs.Notice("发布版本完成")
 		os.Exit(0)
 	}
 
 	if *pupgrade {
+		logs.Notice("准备升级版本 ......")
 		VerServers = CheckVerservers(VerServers, 1)
 		if len(VerServers) == 0 {
 			fmt.Println("所有的版本服务器都失效！")
@@ -541,6 +545,7 @@ func StartSelfUpdate(avers ...string) {
 			}
 			//#endregion
 
+			logs.Notice("升级版本完成")
 			os.Exit(0)
 			return
 		}
