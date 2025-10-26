@@ -73,18 +73,18 @@ go get -u github.com/tea4go/gh
 ```go
 import (
     "github.com/tea4go/gh/log4go"
-    "github.com/tea4go/gh/redisclient" 
+    "github.com/tea4go/gh/redisclient"
     "github.com/tea4go/gh/utils"
 )
 
 func main() {
     // 日志记录
     logs.Info("应用启动...")
-    
+
     // Redis操作
     client := redisclient.GetInstance()
     client.Set("key", "value", 3600)
-    
+
     // 工具函数
     guid := utils.GenerateGUID()
     logs.Info("生成GUID: %s", guid)
@@ -196,6 +196,13 @@ func main() {
 - **v1.1.0** - 新增微信和钉钉集成模块
 - **v1.2.0** - 完善LDAP和RADIUS认证功能
 - **v1.3.0** - 优化性能，增加更多工具函数
+
+推送TAG命令
+
+```
+git tag -a v1.3.1 -m "v1.3.1"
+git push origin --tags
+```
 
 ## 🤝 贡献指南
 
