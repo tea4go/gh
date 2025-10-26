@@ -71,8 +71,8 @@ func SetAppVersion(appname, appver, isbeta, buildtime string) {
 func PublishSoftware(url string) error {
 	logs.Debug("准备发布新版本 ...... %s.%s.%s.%s\n", AppName, AppVersion, runtime.GOOS, runtime.GOARCH)
 	// 超级管理员权限验证
-	superadmin := logs.GetParamString("BASH_KEY", "", "Null") == "rfoMzV4D8O9owOET33vJ"
-	if !superadmin {
+	keyId := logs.GetParamString("BASH_KEY", "", "")
+	if keyId == "" {
 		return fmt.Errorf("没有版本发布的权限")
 	}
 
@@ -90,7 +90,7 @@ func PublishSoftware(url string) error {
 	_ = writer.WriteField("GOOS", runtime.GOOS)
 	_ = writer.WriteField("GOARCH", runtime.GOARCH)
 	_ = writer.WriteField("servurl", url)
-	_ = writer.WriteField("key", "tvQ2YthGoV2wymjWVkyc")
+	_ = writer.WriteField("key", keyId)
 
 	puturl := `发布的地址：
 curl -X POST ^
@@ -99,7 +99,7 @@ curl -X POST ^
  -F "verpath=/update/%s" ^
  -F "GOOS=%s" ^
  -F "GOARCH=%s" ^
- -F "key=tvQ2YthGoV2wymjWVkyc" ^
+ -F "key=xxx" ^
  -F "verfile=@%s" ^
  %s/publish ^
  | jq`
@@ -443,19 +443,16 @@ var pversion *bool
 var pupgrade *bool
 var ppublish *bool
 var phelp *bool
-var SuperAdmin bool
 
 func init() {
-	keyId := logs.GetParamString("BASH_KEY", "", "Null")
+	keyId := logs.GetParamString("BASH_KEY", "", "")
 	pforced = flag.BoolP(`forced`, ``, false, `是否强制升级。`)
 	pversion = flag.BoolP("version", "v", false, "显示版本号。")
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
 	phelp = flag.BoolP(`help`, ``, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
-	SuperAdmin = keyId == utils.KeyID
-	logs.FDebug("SuperAdmin = %v", SuperAdmin)
-	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", os.Getenv("BASH_KEY"), "")
-	if SuperAdmin {
+	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", keyId, "")
+	if keyId != "" {
 		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
 	}
 }
