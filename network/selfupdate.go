@@ -461,6 +461,14 @@ func SetForced() {
 	*pforced = true
 }
 
+func SetUpgrade() {
+	*pupgrade = true
+}
+
+func SetPublish() {
+	*ppublish = true
+}
+
 func StartSelfUpdate(avers ...string) {
 	if len(avers) > 0 {
 		VerServers = append(VerServers, avers...)

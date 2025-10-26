@@ -54,6 +54,16 @@ func CommandString(command string) *CmdPlus {
 	return CommandStringContext(context.Background(), command)
 }
 
+func PowerShellFile(psexe, psname string) *CmdPlus {
+	ctx, cancel := context.WithCancel(context.Background())
+	cmd := exec.CommandContext(ctx, psexe, "-ExecutionPolicy", "Bypass", "-File", psname)
+	cmd.Env = os.Environ()
+	return &CmdPlus{
+		Cmd:        cmd,
+		cancelFunc: cancel,
+	}
+}
+
 // Ref: http://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
 func (k *CmdPlus) SetUser(name string) (err error) {
 	u, err := user.Lookup(name)
