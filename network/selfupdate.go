@@ -52,7 +52,7 @@ func SetAppVersion(appname, appver, isbeta, buildtime string) {
 		const inputLayout = "2006-01-02(15:04:05)"
 		t, err := time.Parse(inputLayout, buildtime)
 		if err == nil {
-			const outputLayout = "20060102_150405"
+			const outputLayout = "0102_1504"
 			AppVersion = fmt.Sprintf("%s_%s", appver, t.Format(outputLayout))
 		} else {
 			AppVersion = fmt.Sprintf("%s_%s", appver, buildtime)
