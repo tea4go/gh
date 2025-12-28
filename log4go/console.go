@@ -69,6 +69,7 @@ var colors = []brush{
 type consoleWriter struct {
 	lgwi      *logWriter
 	Level     int  `json:"level"`
+	LogShort  bool `json:"log_short"`
 	ColorFlag bool `json:"color"` //this filed is useful only when system's terminal supports color
 	Stderr    bool `json:"stderr"`
 }
@@ -117,8 +118,12 @@ func (c *consoleWriter) WriteMsg(fileName string, fileLine int, callLevel int, c
 	}
 	msg = msg + "\n"
 	if logLevel != LevelPrint {
-		head := fmt.Sprintf("(%s:%d)", fileName, fileLine)
-		msg = fmt.Sprintf("%s %-25s %s> %s", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
+		if c.LogShort {
+			msg = fmt.Sprintf("%s> %s", levelPrefix[logLevel], msg)
+		} else {
+			head := fmt.Sprintf("(%s:%d)", fileName, fileLine)
+			msg = fmt.Sprintf("%s %-25s %s> %s", when.Format("15.04.05"), head, levelPrefix[logLevel], msg)
+		}
 	}
 	if c.ColorFlag {
 		msg = colors[logLevel](msg)

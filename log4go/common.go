@@ -292,11 +292,13 @@ func GetLogName() string {
 var bstd_err bool = false //是否将日志输出到标准错误
 var plog_level *int
 var plog_name *string
+var plog_short *bool
 
 func init() {
 	IsDebug = GetParamBool("log_fdebug", false)
 	plog_level = flag.IntP("log_level", "l", 5, "设置日志级别（0-7)，数字越大日志越详细。")
 	plog_name = flag.StringP(`log_name`, `N`, ``, `日志名称`)
+	plog_short = flag.BoolP(`log_short`, ``, false, `简化日志`)
 }
 
 func StartLogger(log_names ...string) {
@@ -310,6 +312,9 @@ func StartLogger(log_names ...string) {
 	if log_level > LevelDebug || log_level < LevelEmergency {
 		log_level = LevelNotice
 	}
+
+	// 从参数中获取log_server的值，如果未设置则使用空字符串
+	log_short := GetParamBool("log_short", *plog_short)
 
 	// 从参数中获取log_server的值，如果未设置则使用空字符串
 	log_server := GetParamString("log_server", "", "")
@@ -332,7 +337,7 @@ func StartLogger(log_names ...string) {
 	}
 
 	// 设置控制台日志信息，包括颜色输出和级别
-	err = SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d}`, log_level))
+	err = SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d,"log_short":%t}`, log_level, log_short))
 	if err != nil {
 		FDebug("SetLogger(console,%d,%s) - %v", log_level, log_name, err)
 	}

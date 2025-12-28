@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -109,13 +110,13 @@ curl -X POST ^
 	// 添加文件
 	file, err := os.Open(utils.RunFileName())
 	if err != nil {
-		return fmt.Errorf("打开文件错误，%v", err)
+		return fmt.Errorf("打开文件，%v", err)
 	}
 	defer file.Close()
 
 	part, err := writer.CreateFormFile("verfile", file.Name())
 	if err != nil {
-		return fmt.Errorf("创建表单文件错误，%v", err)
+		return fmt.Errorf("创建表单文件，%v", err)
 	}
 
 	// 创建进度条 - 修正后的版本
@@ -149,18 +150,18 @@ curl -X POST ^
 	}
 	_, err = io.Copy(part, progressReader)
 	if err != nil {
-		return fmt.Errorf("复制文件内容错误，%v", err)
+		return fmt.Errorf("复制文件内容，%v", err)
 	}
 	// 关闭writer以完成表单写入
 	err = writer.Close()
 	if err != nil {
-		return fmt.Errorf("关闭multipart写入错误，%v", err)
+		return fmt.Errorf("关闭multipart写入，%v", err)
 	}
 
 	// 创建请求
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/publish", url), &requestBody)
 	if err != nil {
-		return fmt.Errorf("创建请求错误，%v", err)
+		return fmt.Errorf("创建请求，%v", err)
 	}
 	// 设置Content-Type头部，包含boundary
 	req.Header.Set("Content-Type", writer.FormDataContentType())
@@ -169,15 +170,27 @@ curl -X POST ^
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("发送请求错误，%v", utils.GetNetError(err))
+		return fmt.Errorf("发送请求，%v", utils.GetNetError(err))
 	}
 	defer resp.Body.Close()
 
 	// 检查响应状态码
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("请求错误，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+		// 定义匿名结构体来解析JSON响应
+		var reErr struct {
+			Errno  int    `json:"errno"`
+			Errmsg string `json:"errmsg"`
+		}
+
+		// 解析JSON
+		if err := json.Unmarshal(body, &reErr); err != nil {
+			return fmt.Errorf("请求错误，状态码: %d, 响应: %s", resp.StatusCode, string(body))
+		}
+		return fmt.Errorf("%s (%d)", reErr.Errmsg, reErr.Errno)
 	}
+
+	fmt.Println("OK")
 	return nil
 }
 
@@ -512,10 +525,10 @@ func StartSelfUpdate(avers ...string) {
 		for _, v := range VerServers {
 			logs.Notice("准备发布版本 %s", v)
 			err := PublishSoftware(v)
-			if err != nil {
-				fmt.Printf("发布新版本失败，%v", err)
-			}
 			fmt.Println("")
+			if err != nil {
+				fmt.Printf("发布新版本失败，%v\n", err)
+			}
 		}
 		logs.Notice("发布版本完成")
 		os.Exit(0)
