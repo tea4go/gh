@@ -147,7 +147,9 @@ func GetIPAdress() string {
 		if ipnet, ok := value.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
 			if ipnet.IP.To4() != nil {
 				ip_addr = ipnet.IP.String()
-				if strings.Contains(ip_addr, "192.168.3") || strings.Contains(ip_addr, "10.45") || strings.Contains(ip_addr, "192.168.50") || strings.Contains(ip_addr, "192.168.50") {
+				if strings.Contains(ip_addr, "192.168.3") || strings.Contains(ip_addr, "10.45") ||
+					strings.Contains(ip_addr, "192.168.50") || strings.Contains(ip_addr, "192.168.50") || strings.Contains(ip_addr, "192.168.51") || strings.Contains(ip_addr, "192.168.52") ||
+					strings.Contains(ip_addr, "192.168.100") {
 					return ip_addr
 				}
 			}
@@ -156,6 +158,24 @@ func GetIPAdress() string {
 	return ip_addr
 }
 
+func GetIPAdressByPrefix(prefix string) string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	ip_addr := ""
+	for _, value := range addrs {
+		if ipnet, ok := value.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if ipnet.IP.To4() != nil {
+				ip_addr = ipnet.IP.String()
+				if strings.Contains(ip_addr, prefix) {
+					return ip_addr
+				}
+			}
+		}
+	}
+	return ip_addr
+}
 func GetAllIPAdress() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
