@@ -23,6 +23,11 @@ import (
 )
 
 func TestFiles_1(t *testing.T) {
+	// ensure clean files before test
+	_ = os.Remove("test.log")
+	for _, fn := range levelNames[0:] {
+		_ = os.Remove("test." + fn + ".log")
+	}
 	log := NewLogger(10000)
 	log.SetLogger("multifile", `{"filename":"test.log","separate":["emergency", "alert", "critical", "error", "warning", "notice", "info", "debug"]}`)
 	log.Debug("debug")

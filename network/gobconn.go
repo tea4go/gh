@@ -6,7 +6,6 @@ import (
 	"net"
 	"reflect"
 	"sync"
-	"unsafe"
 )
 
 type message struct {
@@ -168,7 +167,8 @@ func putPointer(value reflect.Value) {
 		ptrMap[elem.String()] = p
 		lock.Unlock()
 	}
-	ClearData(elem.Size(), unsafe.Pointer(value.Pointer()))
+	// zero the value safely
+	value.Elem().Set(reflect.Zero(elem))
 	p.Put(value)
 }
 
@@ -205,43 +205,4 @@ func DeleteType(name string) {
 	delete(typeMap, name)
 }
 
-/*
-清除固定长度的内存数据,使用方法是:指定内存开始地址,和长度.
-请勿随便使用.使用不当可能会清除有效数据
-*/
-
-func ClearData(size uintptr, ptr unsafe.Pointer) {
-	var temptr uintptr = uintptr(ptr)
-	var step uintptr = 1
-	for {
-		if size <= 0 {
-			break
-		}
-		switch {
-		case 1 <= size && size < 8:
-			step = 1
-		case 8 <= size && size < 32:
-			step = 8
-		case 32 <= size && size < 64:
-			step = 32
-		case size >= 64:
-			step = 64
-		}
-		clearData(step, unsafe.Pointer(temptr))
-		temptr += step
-		size -= step
-	}
-}
-
-func clearData(size uintptr, ptr unsafe.Pointer) {
-	switch size {
-	case 1:
-		*(*[1]byte)(ptr) = [1]byte{}
-	case 8:
-		*(*[8]byte)(ptr) = [8]byte{}
-	case 32:
-		*(*[32]byte)(ptr) = [32]byte{}
-	case 64:
-		*(*[64]byte)(ptr) = [64]byte{}
-	}
-}
+// unsafe memory clearing removed for vet compliance

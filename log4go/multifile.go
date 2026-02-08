@@ -52,6 +52,8 @@ func (f *multiFileLogWriter) Init(config string) error {
 		return err
 	}
 	f.fullLogWriter = writer
+	// full log should capture all levels
+	f.fullLogWriter.Level = LevelDebug
 	f.writers[LevelDebug+1] = writer
 
 	//unmarshal "separate" field to f.Separate

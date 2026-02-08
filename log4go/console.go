@@ -90,20 +90,17 @@ func (c *consoleWriter) Init(jsonConfig string) error {
 		FDebug("InitLogger(%s,console,color=%v,stderr=%v) : %s", GetLevelName(c.Level), c.ColorFlag, c.Stderr || bstd_err, jsonConfig)
 	}()
 
-	if len(jsonConfig) == 0 {
-		return nil
-	}
-	err := json.Unmarshal([]byte(jsonConfig), c)
-
-	if err == nil {
-		//fmt.Fprintf(os.Stderr, "c.Stderr = %v , bstd_err = %v\n", c.Stderr, bstd_err)
-		if c.Stderr || bstd_err {
-			c.lgwi = newLogWriter(ansicolor.NewAnsiColorWriter(os.Stderr))
-		} else {
-			c.lgwi = newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout))
+	if len(jsonConfig) > 0 {
+		if err := json.Unmarshal([]byte(jsonConfig), c); err != nil {
+			return err
 		}
 	}
-	return err
+	if c.Stderr || bstd_err {
+		c.lgwi = newLogWriter(ansicolor.NewAnsiColorWriter(os.Stderr))
+	} else {
+		c.lgwi = newLogWriter(ansicolor.NewAnsiColorWriter(os.Stdout))
+	}
+	return nil
 }
 
 // 打印内容：

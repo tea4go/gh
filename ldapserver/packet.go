@@ -102,7 +102,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 		// Bottom 7 bits give the number of length bytes to follow.
 		numBytes := int(b & 0x7f)
 		if numBytes == 0 {
-			err = ldap.SyntaxError{"indefinite length found (not DER)"}
+			err = fmt.Errorf("indefinite length found (not DER)")
 			return
 		}
 		ret.Length = 0
@@ -115,7 +115,7 @@ func readTagAndLength(conn *bufio.Reader, bytes *[]byte) (ret ldap.TagAndLength,
 			if ret.Length >= 1<<23 {
 				// We can't shift ret.length up without
 				// overflowing.
-				err = ldap.StructuralError{"溢出错误(length too large)"}
+				err = fmt.Errorf("溢出错误(length too large)")
 				return
 			}
 			ret.Length <<= 8

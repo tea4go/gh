@@ -405,6 +405,6 @@ func (Self *TDingTalkClient) GetAccessToken() (string, error) {
 		return info.AccessToken, nil
 	} else {
 		logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... Not OK %s(%d)", info.ErrMsg, info.ErrCode)
-		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode))
+		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode)
 	}
 }

@@ -81,7 +81,8 @@ func (etcd *TEtcdClient) SetHead(head string) {
  * Set Value
  */
 func (etcd *TEtcdClient) Set(key string, value string, args ...int) error {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	if len(args) > 0 {
 		expires := args[0]
 		lease, err := etcd.client.Grant(ctx, int64(expires))
@@ -126,7 +127,8 @@ func (etcd *TEtcdClient) HGet(getResp *clientv3.GetResponse, err error) (map[str
  * Get Single Key
  */
 func (etcd *TEtcdClient) Get(key string) (string, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	getResponse, error := etcd.client.Get(ctx, etcd.head+key)
 	result, _, err := etcd.HGet(getResponse, error)
 	return result[key], err
@@ -136,7 +138,8 @@ func (etcd *TEtcdClient) Get(key string) (string, error) {
  * Get By prefix Mutiple Key
  */
 func (etcd *TEtcdClient) GetAll(prefix string) (map[string]string, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withPrefix := clientv3.WithPrefix()
 	return etcd.HGet(etcd.client.Get(ctx, etcd.head+prefix, withPrefix))
 }
@@ -145,7 +148,8 @@ func (etcd *TEtcdClient) GetAll(prefix string) (map[string]string, int64, error)
  * 获取最大键,用于获取最大ID,比如Key_001 ... Key_102 最大为Key_102
  */
 func (etcd *TEtcdClient) GetMaxKey(prefix string) (string, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withPrefix := clientv3.WithPrefix()
 	withSort := clientv3.WithSort(clientv3.SortByKey, clientv3.SortDescend)
 	withLimit := clientv3.WithLimit(1)
@@ -165,7 +169,8 @@ func (etcd *TEtcdClient) GetMaxKey(prefix string) (string, error) {
  * Count By prefix data
  */
 func (etcd *TEtcdClient) Count(prefix string) (int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withCount := clientv3.WithCountOnly()
 	withPrefix := clientv3.WithPrefix()
 	ret, err := etcd.client.Get(ctx, etcd.head+prefix, withPrefix, withCount)
@@ -180,7 +185,8 @@ func (etcd *TEtcdClient) Count(prefix string) (int64, error) {
  * Get By prefix Limit N
  */
 func (etcd *TEtcdClient) GetLimit(prefix string, limit int) (map[string]string, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withPrefix := clientv3.WithPrefix()
 	withLimit := clientv3.WithLimit(int64(limit))
 	return etcd.HGet(etcd.client.Get(ctx, etcd.head+prefix, withPrefix, withLimit))
@@ -190,7 +196,8 @@ func (etcd *TEtcdClient) GetLimit(prefix string, limit int) (map[string]string, 
  * Get By Range,Not Contains endKey,[startKey,endKey)
  */
 func (etcd *TEtcdClient) GetRange(startKey string, endKey string) (map[string]string, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withRange := clientv3.WithRange(etcd.head + "/" + endKey)
 	return etcd.HGet(etcd.client.Get(ctx, etcd.head+startKey, withRange))
 }
@@ -199,7 +206,8 @@ func (etcd *TEtcdClient) GetRange(startKey string, endKey string) (map[string]st
  * Get By Range,Contains StartKey[startKey,N-1]
  */
 func (etcd *TEtcdClient) GetRangeLimit(startKey string, limit int) (map[string]string, int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withLimit := clientv3.WithLimit(int64(limit))
 	withFrom := clientv3.WithFromKey()
 	return etcd.HGet(etcd.client.Get(ctx, etcd.head+startKey, withFrom, withLimit))
@@ -209,7 +217,8 @@ func (etcd *TEtcdClient) GetRangeLimit(startKey string, limit int) (map[string]s
  * Delete One
  */
 func (etcd *TEtcdClient) Del(key string) (int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	ret, err := etcd.client.Delete(ctx, etcd.head+key)
 	if err != nil {
 		return 0, err
@@ -221,7 +230,8 @@ func (etcd *TEtcdClient) Del(key string) (int64, error) {
  * Delete All By Prefix
  */
 func (etcd *TEtcdClient) DelAll(prefix string) (int64, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	withPrefix := clientv3.WithPrefix()
 	ret, err := etcd.client.Delete(ctx, etcd.head+prefix, withPrefix)
 	if err != nil {

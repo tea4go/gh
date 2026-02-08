@@ -42,16 +42,17 @@ func (Self JsonTime) MarshalJSON() ([]byte, error) {
 	return []byte(stamp), nil
 }
 
-func (Self JsonTime) UnmarshalJSON(data []byte, v interface{}) error {
+func (Self *JsonTime) UnmarshalJSON(data []byte) error {
 	loc, err := time.LoadLocation("Local")
 	if err != nil {
 		return err
 	}
-	u, err := time.ParseInLocation("2006-01-02 15:04:05", string(data), loc)
+	s := strings.Trim(string(data), "\"")
+	u, err := time.ParseInLocation("2006-01-02 15:04:05", s, loc)
 	if err != nil {
 		return err
 	}
-	Self = JsonTime(u)
+	*Self = JsonTime(u)
 	return nil
 }
 

@@ -101,7 +101,8 @@ func (Self *TRedisClient) SetHead(head string) {
  * Set Value
  */
 func (Self *TRedisClient) Set(key string, value string, args ...interface{}) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	if len(args) > 0 {
 		expires := args[0].(time.Duration)
 		_, err := Self.poollist.Set(ctx, Self.head+key, value, expires).Result()
@@ -122,7 +123,8 @@ func (Self *TRedisClient) Set(key string, value string, args ...interface{}) (bo
  * Exists Single Key
  */
 func (Self *TRedisClient) Exists(key string) bool {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	n, _ := Self.poollist.Exists(ctx, Self.head+key).Result()
 	return n == 1
 }
@@ -131,7 +133,8 @@ func (Self *TRedisClient) Exists(key string) bool {
  * Get Single Key
  */
 func (Self *TRedisClient) Get(key string) (string, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	value, err := Self.poollist.Get(ctx, Self.head+key).Result()
 	if err == rediss.Nil {
 		return value, fmt.Errorf("键值%s不存在！", key)
@@ -144,7 +147,8 @@ func (Self *TRedisClient) Get(key string) (string, error) {
  * GetExpire Single Key
  */
 func (Self *TRedisClient) GetExpire(key string) (time.Duration, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	value, err := Self.poollist.TTL(ctx, Self.head+key).Result()
 	if err == rediss.Nil {
 		return value, fmt.Errorf("键值%s不存在！", key)
@@ -157,7 +161,8 @@ func (Self *TRedisClient) GetExpire(key string) (time.Duration, error) {
  * Del Single Key
  */
 func (Self *TRedisClient) Del(key string) (bool, error) {
-	ctx, _ := context.WithTimeout(context.Background(), OperTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
+	defer cancel()
 	n, err := Self.poollist.Del(ctx, Self.head+key).Result()
 	if err == rediss.Nil {
 		return n > 0, fmt.Errorf("键值%s不存在！", key)

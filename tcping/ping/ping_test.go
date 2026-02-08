@@ -11,11 +11,13 @@ import (
 	tcping "github.com/tea4go/gh/tcping/ping"
 )
 
-type PingHandler func(ctx context.Context) *tcping.Stats
+type PingHandler func(ctx context.Context) *tcping.TStats
 
-func (ph PingHandler) Ping(ctx context.Context) *tcping.Stats {
+func (ph PingHandler) Ping(ctx context.Context) *tcping.TStats {
 	return ph(ctx)
 }
+
+func (ph PingHandler) SetTarget(t *tcping.TTarget) {}
 
 type String string
 
@@ -27,8 +29,8 @@ func TestPinger(t *testing.T) {
 	u, _ := url.Parse("https://hui.lu")
 	var buf bytes.Buffer
 	pinger := tcping.NewPinger(&buf, u,
-		PingHandler(func(ctx context.Context) *tcping.Stats {
-			return &tcping.Stats{
+		PingHandler(func(ctx context.Context) *tcping.TStats {
+			return &tcping.TStats{
 				Address:     "127.0.0.1:443",
 				Connected:   true,
 				Duration:    time.Second,

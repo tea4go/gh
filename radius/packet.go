@@ -103,7 +103,7 @@ func (p *TDataPacket) String() string {
 			}
 			packet_text = packet_text + temp_text
 		} else {
-			temp_text = fmt.Sprintf("\n    Not found %d attribe", k+1, v.AttrId)
+			temp_text = fmt.Sprintf("\n    Not found %d attribe(%d)", k+1, v.AttrId)
 			packet_text = packet_text + temp_text
 		}
 	}
@@ -120,7 +120,7 @@ func (p *TDataPacket) String() string {
 // method.
 func ParsePacket(data, secret []byte, dictionary *TDictionary) (*TDataPacket, error) {
 	if len(data) < 20 {
-		return nil, fmt.Errorf("有效包必须大于20字节。 目前包大小[%d]", len(data)))
+		return nil, fmt.Errorf("有效包必须大于20字节。 目前包大小[%d]", len(data))
 	}
 
 	packet := &TDataPacket{
@@ -132,7 +132,7 @@ func ParsePacket(data, secret []byte, dictionary *TDictionary) (*TDataPacket, er
 
 	length := binary.BigEndian.Uint16(data[2:4])
 	if length < 20 || length > maxPacketSize {
-		return nil, fmt.Errorf("无效包长度%d(20-%d)", length, maxPacketSize))
+		return nil, fmt.Errorf("无效包长度%d(20-%d)", length, maxPacketSize)
 	}
 
 	copy(packet.Authenticator[:], data[4:20])
@@ -140,12 +140,12 @@ func ParsePacket(data, secret []byte, dictionary *TDictionary) (*TDataPacket, er
 	attributes := data[20:]
 	for len(attributes) > 0 {
 		if len(attributes) < 2 {
-			return nil, fmt.Errorf("有效属性必须大于2字节。 BufferSize=%d", len(attributes)))
+			return nil, fmt.Errorf("有效属性必须大于2字节。 BufferSize=%d", len(attributes))
 		}
 
 		attrLength := attributes[1]
 		if attrLength < 1 || attrLength > 253 || len(attributes) < int(attrLength) {
-			return nil, fmt.Errorf("无效属性长度%d(2-%d)", attrLength, 253))
+			return nil, fmt.Errorf("无效属性长度%d(2-%d)", attrLength, 253)
 		}
 		attrType := attributes[0]
 		attrValue := attributes[2:attrLength]
@@ -327,7 +327,7 @@ func (p *TDataPacket) Set(name string, value interface{}) error {
 // User-Password attribute, ok is true. Otherwise, it is false.
 func (p *TDataPacket) PAP() (username, password string, err error) {
 	if p.Code != CodeAccessRequest {
-		err = fmt.Errorf("只接收AccessRequest(Code=%d)请求包，当前为(Code=%d)", CodeAccessRequest, p.Code))
+		err = fmt.Errorf("只接收AccessRequest(Code=%d)请求包，当前为(Code=%d)", CodeAccessRequest, p.Code)
 		return
 	}
 	user := p.GetValue("User-Name")

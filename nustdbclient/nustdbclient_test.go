@@ -17,44 +17,40 @@ func PrintData(title string, items []*TNustDBField) {
 }
 
 func TestLPush(t *testing.T) {
-	inst := InitInstance("default", "./nustdb")
-
+	inst, err := InitInstance("default", "./nustdb", true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	inst.SetHead("TEST")
-	inst.SetBucketName("List", 3)
-	fmt.Println(inst.LPushByBucketName("List", "List01", "123123"))
+	inst.LSetMaxSize(3)
+	err = inst.LPushByBucket("List", "List01", "123123")
+	fmt.Println(err)
 }
 
 func TestInitInstance(t *testing.T) {
-	inst := InitInstance("default", "./nustdb")
-
+	inst, err := InitInstance("default", "./nustdb", false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	inst.SetHead("TEST")
 
-	items, err := inst.GetAll("")
+	items, err := inst.GetAllValue("")
 	if err != nil {
 		t.Error(err)
 	} else {
 		PrintData("磁盘的数据", items)
 	}
 
-	inst.Set("NameA01", "Value01")
-	inst.Set("NameA02", "Value02")
-	inst.Set("NameA03", "Value03")
-	inst.Set("NameA04", "Value04")
-	inst.Set("NameA05", "Value05")
+	_ = inst.SetValue("NameA01", "Value01")
+	_ = inst.SetValue("NameA02", "Value02")
+	_ = inst.SetValue("NameA03", "Value03")
+	_ = inst.SetValue("NameA04", "Value04")
+	_ = inst.SetValue("NameA05", "Value05")
 
-	items, err = inst.GetAll("")
+	items, err = inst.GetAllValue("")
 	if err != nil {
 		t.Error(err)
 	} else {
 		PrintData("初始化的数据", items)
-	}
-
-	inst.DelAll("")
-
-	items, err = inst.GetAll("")
-	if err != nil {
-		t.Error(err)
-	} else {
-		PrintData("删除后的数据", items)
 	}
 }

@@ -106,7 +106,7 @@ func (Self *TLdapUser) String() string {
 type TLdapClient struct {
 	Addr       string   `json:"addr"`
 	BaseDn     string   `json:"baseDn"`
-	BindDn     string   `json:"bindDn`
+	BindDn     string   `json:"bindDn"`
 	BindPass   string   `json:"bindPass"`
 	AuthFilter string   `json:"authFilter"`
 	Attributes []string `json:"attributes"`
