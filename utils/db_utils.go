@@ -176,6 +176,7 @@ func SQLQuery(db_in *sql.DB, query_sql string, v ...interface{}) ([][]string, er
 	return results, nil
 }
 
+// SQLQueryPrint 执行查询并打印结果
 func SQLQueryPrint(db_in *sql.DB, query_sql string, v ...interface{}) error {
 	query, err := db_in.Query(query_sql, v...)
 	if err != nil {
@@ -186,6 +187,7 @@ func SQLQueryPrint(db_in *sql.DB, query_sql string, v ...interface{}) error {
 	return err
 }
 
+// SQLRowPrintByResult 打印查询结果集
 func SQLRowPrintByResult(query *sql.Rows) error {
 	column, _ := query.Columns()              //读出查询出的列字段名
 	values := make([]string, len(column))     //values是每个列的值，这里获取到byte里

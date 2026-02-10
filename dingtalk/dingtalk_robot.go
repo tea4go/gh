@@ -68,6 +68,7 @@ func (w *TDingTalkSDK) computeHmacSha256(sign string, secret string) string {
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
+// Init 初始化
 func (w *TDingTalkSns) Init(appId string, appSecret string) {
 	w.appkey = appId
 	w.appsecret = appSecret
@@ -80,6 +81,7 @@ type TDingTalkSns struct {
 	token     *TAccessToken
 }
 
+// GetDingTalkSns 获取钉钉 SNS 实例
 func GetDingTalkSns(appkey, appsecret string) *TDingTalkSns {
 	sns := &TDingTalkSns{
 		appkey:    appkey,
@@ -91,10 +93,12 @@ func GetDingTalkSns(appkey, appsecret string) *TDingTalkSns {
 	return sns
 }
 
+// GetAppKey 获取 App Key
 func (Self *TDingTalkSns) GetAppKey() string {
 	return Self.appkey
 }
 
+// GetAccessToken 获取 AccessToken
 // https://oapi.dingtalk.com/gettoken?appkey=key&appsecret=secret
 // {"errorCode":503,"success":false,"errorMsg":"不合法的access_token"}
 func (Self *TDingTalkSns) GetAccessToken() (string, error) {
@@ -125,6 +129,7 @@ func (Self *TDingTalkSns) GetAccessToken() (string, error) {
 	}
 }
 
+// GetUserByUnionId 根据 UnionId 获取用户信息
 // 根据sns临时授权码获取用户信息
 // https://developers.dingtalk.com/document/app/obtain-the-user-information-based-on-the-sns-temporary-authorization
 func (Self *TDingTalkSns) GetUserByUnionId(code string) (bool, string, error) {
@@ -228,6 +233,7 @@ type TDingTalkOAuth2 struct {
 	appsecret string
 }
 
+// GetDingTalkOAuth2 获取钉钉 OAuth2 实例
 func GetDingTalkOAuth2(appkey, appsecret string) *TDingTalkOAuth2 {
 	sns := &TDingTalkOAuth2{
 		appkey:    appkey,
@@ -239,10 +245,12 @@ func GetDingTalkOAuth2(appkey, appsecret string) *TDingTalkOAuth2 {
 	return sns
 }
 
+// GetAppKey 获取 App Key
 func (Self *TDingTalkOAuth2) GetAppKey() string {
 	return Self.appkey
 }
 
+// GetAccessToken 获取 AccessToken
 // https://oapi.dingtalk.com/gettoken?appkey=key&appsecret=secret
 // {"errorCode":503,"success":false,"errorMsg":"不合法的access_token"}
 func (Self *TDingTalkOAuth2) GetAccessToken() (string, error) {
@@ -277,6 +285,7 @@ func (Self *TDingTalkOAuth2) GetAccessToken() (string, error) {
 	return reat.AccessToken, nil
 }
 
+// GetUserByUnionId 根据 UnionId 获取用户信息
 // 根据临时授权码获取用户信息
 // https://open.dingtalk.com/document/orgapp/obtain-user-token
 func (Self *TDingTalkOAuth2) GetUserByUnionId(code string) (bool, string, error) {
@@ -360,11 +369,13 @@ type TDingTalkRobot struct {
 	config      []robotTokenConfig
 }
 
+// Init 初始化
 func (w *TDingTalkRobot) Init(access_token string, secret string) {
 	w.accessToken = access_token
 	w.secret = secret
 }
 
+// Inits 初始化配置
 func (w *TDingTalkRobot) Inits() {
 	w.config = make([]robotTokenConfig, 0)
 	c1 := robotTokenConfig{} //工具01
@@ -393,6 +404,7 @@ func (w *TDingTalkRobot) Inits() {
 	w.config = append(w.config, c5)
 }
 
+// SendMDMessage 发送 Markdown 消息
 func (w *TDingTalkRobot) SendMDMessage(title, text string) bool {
 	var message_text MessageMarkdown
 	message_text.Type = "markdown"
@@ -401,6 +413,7 @@ func (w *TDingTalkRobot) SendMDMessage(title, text string) bool {
 	return w.SendMessage(message_text)
 }
 
+// SendTextMessage 发送文本消息
 func (w *TDingTalkRobot) SendTextMessage(text string, all bool) bool {
 	var message_text MessageText
 	message_text.Type = "text"
@@ -410,6 +423,7 @@ func (w *TDingTalkRobot) SendTextMessage(text string, all bool) bool {
 	return w.SendMessage(message_text)
 }
 
+// SendTextMessages 发送文本消息到多个配置
 func (w *TDingTalkRobot) SendTextMessages(text string, all bool) int {
 	re := 0
 	for _, r := range w.config {
@@ -422,6 +436,7 @@ func (w *TDingTalkRobot) SendTextMessages(text string, all bool) int {
 	return re
 }
 
+// SendMessage 发送消息
 func (w *TDingTalkRobot) SendMessage(msg interface{}) bool {
 	dd_url := fmt.Sprintf("https://oapi.dingtalk.com/robot/send?access_token=%s%s", w.accessToken, w.genSignedURL("&timestamp=%s&sign=%s", w.secret))
 	req := network.HttpPost(dd_url).SetTimeout(10*time.Second, 5*time.Second)

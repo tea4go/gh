@@ -34,6 +34,7 @@ type TAccessToken struct {
 	CreateDate  time.Time
 }
 
+// String 转换为字符串
 func (Self *TAccessToken) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer
@@ -41,6 +42,7 @@ func (Self *TAccessToken) String() string {
 	return string(out.Bytes())
 }
 
+// IsValid 检查 Token 是否有效
 func (Self *TAccessToken) IsValid() bool {
 	return Self.AccessToken != "" && int(time.Now().Unix()-Self.CreateDate.Unix()) <= Self.ExpiresIn
 }
@@ -50,6 +52,7 @@ type TLoginInfo struct {
 	UserId string `json:"userid"`
 }
 
+// String 转换为字符串
 func (Self *TLoginInfo) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer
@@ -62,6 +65,7 @@ type TWorkNotify struct {
 	TaskId int `json:"task_id"`
 }
 
+// String 转换为字符串
 func (Self *TWorkNotify) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer
@@ -97,6 +101,7 @@ type TDepartmentInfo struct {
 	IsSub   bool   `json:"groupContainSubDept"`   //部门群是否包含子部门
 }
 
+// String 转换为字符串
 func (Self *TDepartmentInfo) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer
@@ -109,6 +114,7 @@ type TAdmin struct {
 	SysLevel int    `json:"sys_level"`
 }
 
+// String 转换为字符串
 func (Self *TAdmin) String() string {
 	if Self.SysLevel == 1 {
 		return fmt.Sprintf("主 %s", Self.UserId)
@@ -122,6 +128,7 @@ type TAdmins struct {
 	Admins []TAdmin `json:"adminList"`
 }
 
+// String 转换为字符串
 func (Self *TAdmins) String() string {
 	out := "管理员列表"
 	for _, v := range Self.Admins {
@@ -139,6 +146,7 @@ type TDingTalkClient struct {
 	timeout_readwrite time.Duration
 }
 
+// GetDingTalkClient 获取钉钉客户端实例
 func GetDingTalkClient(appkey, appsecret string) *TDingTalkClient {
 	return &TDingTalkClient{
 		appkey:            appkey,
@@ -149,6 +157,7 @@ func GetDingTalkClient(appkey, appsecret string) *TDingTalkClient {
 	}
 }
 
+// GetAdmins 获取管理员列表
 // {"sys_level":2,"userid":"userid2"},
 // https://oapi.dingtalk.com/user/get_admin?access_token=ACCESS_TOKEN
 func (Self *TDingTalkClient) GetAdmins() (*TAdmins, error) {
@@ -176,6 +185,7 @@ func (Self *TDingTalkClient) GetAdmins() (*TAdmins, error) {
 	}
 }
 
+// GetUserInfoByPhone 根据手机号获取用户信息
 // https://oapi.dingtalk.com/user/get_by_mobile?access_token=ACCESS_TOKEN&mobile=1xxxxxxxxxx
 func (Self *TDingTalkClient) GetUserInfoByPhone(phone string) (*TUserInfo, error) {
 	_, err := Self.GetAccessToken()
@@ -205,6 +215,7 @@ func (Self *TDingTalkClient) GetUserInfoByPhone(phone string) (*TUserInfo, error
 	}
 }
 
+// GetUserInfo 根据 UserID 获取用户信息
 // https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
 func (Self *TDingTalkClient) GetUserInfo(userid string) (*TUserInfo, error) {
 	logs.Debug("GetUserInfo() : 获取钉钉用户信息")
@@ -237,6 +248,7 @@ func (Self *TDingTalkClient) GetUserInfo(userid string) (*TUserInfo, error) {
 	}
 }
 
+// GetDepartment 获取部门详情
 // https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
 // 获取部门详情
 func (Self *TDingTalkClient) GetDepartment(depid int) (*TDepartmentInfo, error) {
@@ -265,6 +277,7 @@ func (Self *TDingTalkClient) GetDepartment(depid int) (*TDepartmentInfo, error) 
 	}
 }
 
+// GetOrgName 获取组织名称
 func (Self *TDingTalkClient) GetOrgName(depids []int) (string, error) {
 	logs.Debug("GetJobName() : 获取钉钉部门信息")
 	var name string
@@ -285,6 +298,7 @@ func (Self *TDingTalkClient) GetOrgName(depids []int) (string, error) {
 	return name, nil
 }
 
+// GetJobName 获取职位名称
 func (Self *TDingTalkClient) GetJobName(depids []int) (string, error) {
 	logs.Debug("GetJobName() : 获取钉钉岗位信息")
 	var name string
@@ -305,6 +319,7 @@ func (Self *TDingTalkClient) GetJobName(depids []int) (string, error) {
 	return name, nil
 }
 
+// GetFullDepartmentName 获取完整部门名称
 func (Self *TDingTalkClient) GetFullDepartmentName(depid int) (string, error) {
 	info, err := Self.GetDepartment(depid)
 	if err != nil {
@@ -322,6 +337,7 @@ func (Self *TDingTalkClient) GetFullDepartmentName(depid int) (string, error) {
 	}
 }
 
+// GetLoginInfo 获取登录信息
 // https://oapi.dingtalk.com/user/getuserinfo?access_token=access_token&code=code
 func (Self *TDingTalkClient) GetLoginInfo(authcode string) (*TLoginInfo, error) {
 	logs.Debug("GetLoginInfo() : 获取钉钉登录信息")
@@ -351,6 +367,7 @@ func (Self *TDingTalkClient) GetLoginInfo(authcode string) (*TLoginInfo, error) 
 	}
 }
 
+// SendWorkNotify 发送工作通知
 func (Self *TDingTalkClient) SendWorkNotify(msg string) (int, error) {
 	logs.Debug("GetAccessToken() : 发送钉钉工作通知消息")
 	_, err := Self.GetAccessToken()
@@ -380,6 +397,7 @@ func (Self *TDingTalkClient) SendWorkNotify(msg string) (int, error) {
 	}
 }
 
+// GetAccessToken 获取 AccessToken
 // https://oapi.dingtalk.com/gettoken?appkey=key&appsecret=secret
 // {"errorCode":503,"success":false,"errorMsg":"不合法的access_token"}
 func (Self *TDingTalkClient) GetAccessToken() (string, error) {

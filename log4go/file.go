@@ -353,10 +353,12 @@ func (w *fileLogWriter) Flush() {
 	w.fileWriter.Sync()
 }
 
+// SetLevel 设置日志级别
 func (w *fileLogWriter) SetLevel(l int) {
 	w.Level = l
 }
 
+// GetLevel 获取日志级别
 func (w *fileLogWriter) GetLevel() int {
 	return w.Level
 }

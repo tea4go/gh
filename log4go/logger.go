@@ -46,9 +46,9 @@ func (lg *logWriter) writeln(msg string) (int, error) {
 	return n, err
 }
 
-// NewLogger returns a new BeeLogger.
-// channelLen means the number of messages in chan(used where asynchronous is true).
-// if the buffering chan is full, logger adapters write to file or other way.
+// NewLogger 返回一个新的 BeeLogger。
+// channelLen 表示通道中的消息数量（用于 asynchronous 为 true 时）。
+// 如果缓冲通道已满，日志适配器将写入文件或其他方式。
 func NewLogger(channelLens ...int64) *TLogger {
 	bl := new(TLogger)
 	bl.funcCallDepth = 4
@@ -65,6 +65,7 @@ func NewLogger(channelLens ...int64) *TLogger {
 // Async set the log to asynchronous and start the goroutine
 var logMsgPool *sync.Pool
 
+// SetSync 设置同步模式
 func (bl *TLogger) SetSync(msgLen ...int64) *TLogger {
 	FDebug("SetSync() : 设置异步写入模式")
 	bl.lock.Lock()
@@ -90,8 +91,8 @@ func (bl *TLogger) SetSync(msgLen ...int64) *TLogger {
 	return bl
 }
 
-// SetLogger provides a given logger adapter into BeeLogger with config string.
-// config need to be correct JSON as string: {"interval":360}.
+// SetLogger 提供给定的日志适配器到 BeeLogger 与配置字符串。
+// config 需要是正确的 JSON 字符串：{"interval":360}。
 func (bl *TLogger) SetLogger(adapterName string, configs ...string) error {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
@@ -103,8 +104,8 @@ func (bl *TLogger) SetLogger(adapterName string, configs ...string) error {
 	return bl.setLogger(adapterName, configs...)
 }
 
-// SetLogger provides a given logger adapter into BeeLogger with config string.
-// config need to be correct JSON as string: {"interval":360}.
+// setLogger 提供给定的日志适配器到 BeeLogger 与配置字符串。
+// config 需要是正确的 JSON 字符串：{"interval":360}。
 func (bl *TLogger) setLogger(adapterName string, configs ...string) error {
 	config := append(configs, "{}")[0]
 	for _, l := range bl.outputs {
@@ -133,7 +134,7 @@ func (bl *TLogger) setLogger(adapterName string, configs ...string) error {
 	return nil
 }
 
-// DelLogger remove a logger adapter in BeeLogger.
+// DelLogger 删除 BeeLogger 中的日志适配器。
 func (bl *TLogger) DelLogger(adapterName string) error {
 	bl.lock.Lock()
 	defer bl.lock.Unlock()
@@ -154,6 +155,7 @@ func (bl *TLogger) DelLogger(adapterName string) error {
 	return nil
 }
 
+// Write 写入日志
 func (bl *TLogger) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
@@ -214,6 +216,7 @@ func (bl *TLogger) writeToLoggers(fileName string, fileLine int, callLevel int, 
 	}
 }
 
+// GetClassName 获取类名
 // github.com/tea4go/application/myproxy/service.THTTP.StartServer
 func (bl *TLogger) GetClassName(func_name string) string {
 	result := ""
@@ -228,6 +231,7 @@ func (bl *TLogger) GetClassName(func_name string) string {
 	return result
 }
 
+// GetCallStack 获取调用堆栈
 func (bl *TLogger) GetCallStack() (level int, stack string, file string, line int) {
 	level = bl.funcCallDepth
 	stack = ""
@@ -259,9 +263,9 @@ func (bl *TLogger) GetCallStack() (level int, stack string, file string, line in
 	return level - bl.funcCallDepth, bl.GetClassName(t1[len(t1)-1]), file, line
 }
 
-// SetLevel Set log message level.
-// If message level (such as LevelDebug) is higher than logger level (such as LevelWarning),
-// log providers will not even be sent the message.
+// SetLevel 设置日志消息级别。
+// 如果消息级别（如 LevelDebug）高于记录器级别（如 LevelWarning），
+// 日志提供程序甚至不会发送该消息。
 func (bl *TLogger) SetLevel(l int, adapters ...string) {
 	adapters = append(adapters, "")
 	adapter_name := adapters[0]
@@ -278,11 +282,13 @@ func (bl *TLogger) SetLevel(l int, adapters ...string) {
 	}
 }
 
+// SetFDebug 设置调试模式
 func (bl *TLogger) SetFDebug(l bool) {
 	//fmt.Println("设置Log4go调试：", l)
 	IsDebug = l
 }
 
+// GetLevel 获取日志级别
 func (bl *TLogger) GetLevel(adapters ...string) int {
 	adapters = append(adapters, "")
 	adapter_name := adapters[0]
@@ -295,6 +301,7 @@ func (bl *TLogger) GetLevel(adapters ...string) int {
 	return -1
 }
 
+// GetLastLogTime 获取最后日志时间
 func (bl *TLogger) GetLastLogTime() time.Time {
 	return bl.lastTime
 }
@@ -380,17 +387,17 @@ func (bl *TLogger) Debug(format string, v ...interface{}) {
 	bl.writeMsg(LevelDebug, format, v...)
 }
 
-// Debug Log DEBUG level message.
+// Print Log DEBUG level message.
 func (bl *TLogger) Print(format string, v ...interface{}) {
 	bl.writeMsg(LevelPrint, format, v...)
 }
 
-// Debug Log DEBUG level message.
+// Begin Log DEBUG level message.
 func (bl *TLogger) Begin() {
 	bl.writeMsg(LevelDebug, "Begin")
 }
 
-// Debug Log DEBUG level message.
+// End Log DEBUG level message.
 func (bl *TLogger) End() {
 	bl.writeMsg(LevelDebug, "End\n")
 }

@@ -71,11 +71,17 @@ type newLoggerFunc func() ILogger
 
 // Logger defines the behavior of a log provider.
 type ILogger interface {
+	// Init 初始化
 	Init(config string) error
+	// SetLevel 设置级别
 	SetLevel(l int)
+	// GetLevel 获取级别
 	GetLevel() int
+	// WriteMsg 写入消息
 	WriteMsg(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) error
+	// Destroy 销毁
 	Destroy()
+	// Flush 刷新
 	Flush()
 }
 

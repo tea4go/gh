@@ -41,6 +41,7 @@ func (pr *progressReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
+// SetAppVersion 设置应用程序版本信息
 func SetAppVersion(appname, appver, isbeta, buildtime string) {
 	// 设置应用程序名称
 	AppName = appname
@@ -194,7 +195,7 @@ curl -X POST ^
 	return nil
 }
 
-// checkForUpdate 检查是否有新版本可用
+// CheckForUpdate 检查是否有新版本可用
 func CheckForUpdate(url string, forced bool) (string, string, string, error) {
 	if AppName == "" || AppVersion == "" {
 		return "", "", "", fmt.Errorf("未设置AppName或AppVersion")
@@ -259,7 +260,7 @@ func CheckForUpdate(url string, forced bool) (string, string, string, error) {
 	return "", "", "", nil
 }
 
-// doUpdate 执行更新操作
+// DoUpdate 执行更新操作
 func DoUpdate(downurl, checksum string) error {
 	logs.Debug("开始下载更新版本(%s)", downurl)
 
@@ -300,6 +301,7 @@ func DoUpdate(downurl, checksum string) error {
 	return nil
 }
 
+// DoUpdateWithProgress 带进度条的更新操作
 func DoUpdateWithProgress(downurl, checksum string) error {
 	logs.Debug("开始下载更新版本(%s)", downurl)
 
@@ -387,7 +389,7 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 	return nil
 }
 
-// calculateCurrentChecksum 计算当前运行程序的 checksum
+// CalcChecksum 计算当前运行程序的 checksum
 func CalcChecksum() (string, error) {
 	// 获取当前可执行文件路径
 	execPath, err := os.Executable()
@@ -470,6 +472,7 @@ func init() {
 	}
 }
 
+// SetForced 设置强制升级标志
 func SetForced() {
 	*pforced = true
 }
@@ -478,6 +481,7 @@ func SetUpgrade() {
 	*pupgrade = true
 }
 
+// SetPublish 设置发布标志
 func SetPublish() {
 	*ppublish = true
 }
@@ -580,6 +584,7 @@ func StartSelfUpdate(avers ...string) {
 	}
 }
 
+// CheckVerserver 检查版本服务器是否可用
 func CheckVerserver(urls []string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

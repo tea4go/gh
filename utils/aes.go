@@ -20,6 +20,7 @@ type TAESEncrypt struct {
 	ZeroPad bool
 }
 
+// Init 初始化AES加密
 func (this *TAESEncrypt) Init(key_str string) {
 	this.Key = []byte(key_str) //H84XGAppu17nHdEu
 	this.ZeroPad = true
@@ -68,12 +69,14 @@ func (this *TAESEncrypt) Decrypt(ciphertext string) ([]byte, error) {
 	return content, nil
 }
 
+// ZeroPadding Zero填充
 func (this *TAESEncrypt) ZeroPadding(ciphertext []byte, blockSize int) []byte {
 	padding := blockSize - len(ciphertext)%blockSize
 	padtext := bytes.Repeat([]byte{0}, padding)
 	return append(ciphertext, padtext...)
 }
 
+// ZeroUnPadding 去除Zero填充
 func (this *TAESEncrypt) ZeroUnPadding(ciphertext []byte, blockSize int) []byte {
 	pos := strings.IndexByte(string(ciphertext), 0)
 	if pos > 0 {
@@ -88,6 +91,7 @@ func (this *TAESEncrypt) PKCS5Padding(ciphertext []byte, blockSize int) []byte {
 	return append(ciphertext, padtext...)
 }
 
+// PKCS5UnPadding 去除PKCS5填充
 func (this *TAESEncrypt) PKCS5UnPadding(ciphertext []byte, blockSize int) []byte {
 	length := len(ciphertext)
 	unpadding := int(ciphertext[length-1])
@@ -114,6 +118,7 @@ func AesEncrypt(key, test_str string) (string, error) {
 	return fmt.Sprintf("%x", pass), nil
 }
 
+// AesDecrypt 简易AES解密
 func AesDecrypt(key, test_str string) (string, error) {
 	temp_text, err := hex.DecodeString(test_str)
 	if err != nil {

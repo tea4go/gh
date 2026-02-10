@@ -58,6 +58,7 @@ func GetMacByIP_file(ip_text string) (string, error) {
 	return "", fmt.Errorf("没有找到IP对应的Mac地址。")
 }
 
+// GetMacByIP_arp 通过ARP获取MAC地址
 func GetMacByIP_arp(ip_text string) (string, error) {
 	var mac net.HardwareAddr
 
@@ -109,6 +110,7 @@ func GetMacByIP_arp(ip_text string) (string, error) {
 	return "", fmt.Errorf("没有找到IP对应的Mac地址。")
 }
 
+// GetMacByIP 通过IP获取MAC地址（尝试文件和ARP两种方式）
 func GetMacByIP(ip_text string) (string, error) {
 	mac, err := GetMacByIP_file(ip_text)
 	if err != nil {
@@ -120,7 +122,7 @@ func GetMacByIP(ip_text string) (string, error) {
 	return mac, nil
 }
 
-// "http://myexternalip.com/raw"
+// GetPublicIP 获取公网IP
 func GetPublicIP() string {
 	ok_chan := make(chan string)
 	go func() {
@@ -167,8 +169,7 @@ func GetPublicIP() string {
 	}
 }
 
-// "http://myexternalip.com/raw"
-// 目前网址有问题，可以找其他网址
+// GetPublicIPDetail 获取公网IP详细信息
 func GetPublicIPDetail() (*TIPData, error) {
 	_, respBody, err := SimpleHttpGet("http://ip.taobao.com/service/getIpInfo2.php?ip=myip", 10*time.Second, 10*time.Second)
 	if err != nil {

@@ -27,6 +27,7 @@ type MessageText struct {
 	Message MessageTextSub `json:"text"`
 }
 
+// String 转换为字符串
 func (Self *MessageText) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer
@@ -44,6 +45,7 @@ type MessageMarkdown struct {
 	Message MessageMarkdownSub `json:"markdown"`
 }
 
+// String 转换为字符串
 func (Self *MessageMarkdown) String() string {
 	s, _ := json.Marshal(Self)
 	var out bytes.Buffer

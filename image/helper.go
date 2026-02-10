@@ -154,6 +154,7 @@ func get_exif(ex *TExif, data []byte) error {
 	return nil
 }
 
+// ImageConv 图片转换
 func ImageConv(filePath, outPath, outMPath string, quality float32, desWidth int, desHeight int) error {
 	if !utils.FileIsExist(filePath) {
 		return fmt.Errorf("文件不存在！(%s)", filePath)
@@ -264,6 +265,7 @@ func ImageConv(filePath, outPath, outMPath string, quality float32, desWidth int
 	return nil
 }
 
+// Image2Webp 转换为 WebP
 func Image2Webp(filePath, outPath string, quality float32) error {
 	if !utils.FileIsExist(filePath) {
 		return fmt.Errorf("文件不存在！(%s)", filePath)
@@ -319,6 +321,7 @@ func Image2Webp(filePath, outPath string, quality float32) error {
 	return nil
 }
 
+// Image2Thumbnail 生成缩略图
 func Image2Thumbnail(filePath, outPath string, desWidth int, desHeight int) error {
 	if !utils.FileIsExist(filePath) {
 		return fmt.Errorf("文件不存在！(%s)", filePath)

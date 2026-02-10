@@ -55,6 +55,7 @@ type FileEvent struct {
 }
 
 //新增加代码
+// GetMask 获取掩码字符串
 func (e *FileEvent) GetMask() string {
 	var events string = ""
 	var mask uint32 = e.mask
@@ -115,26 +116,31 @@ func (e *FileEvent) GetMask() string {
 }
 
 // IsCreate reports whether the FileEvent was triggered by a creation
+// IsCreate 判断是否是创建事件
 func (e *FileEvent) IsCreate() bool {
 	return (e.mask&sys_FS_CREATE) == sys_FS_CREATE || (e.mask&sys_FS_MOVED_TO) == sys_FS_MOVED_TO
 }
 
 // IsDelete reports whether the FileEvent was triggered by a delete
+// IsDelete 判断是否是删除事件
 func (e *FileEvent) IsDelete() bool {
 	return ((e.mask&sys_FS_DELETE) == sys_FS_DELETE || (e.mask&sys_FS_DELETE_SELF) == sys_FS_DELETE_SELF || (e.mask&sys_FS_MOVED_FROM) == sys_FS_MOVED_FROM)
 }
 
 // IsModify reports whether the FileEvent was triggered by a file modification or attribute change
+// IsModify 判断是否是修改事件
 func (e *FileEvent) IsModify() bool {
 	return ((e.mask&sys_FS_MODIFY) == sys_FS_MODIFY || (e.mask&sys_FS_ATTRIB) == sys_FS_ATTRIB)
 }
 
 // IsRename reports whether the FileEvent was triggered by a change name
+// IsRename 判断是否是重命名事件
 func (e *FileEvent) IsRename() bool {
 	return ((e.mask&sys_FS_MOVE) == sys_FS_MOVE || (e.mask&sys_FS_MOVE_SELF) == sys_FS_MOVE_SELF || (e.mask&sys_FS_MOVED_FROM) == sys_FS_MOVED_FROM)
 }
 
 // IsAttrib reports whether the FileEvent was triggered by a change in the file metadata.
+// IsAttrib 判断是否是属性更改事件
 func (e *FileEvent) IsAttrib() bool {
 	return (e.mask & sys_FS_ATTRIB) == sys_FS_ATTRIB
 }
@@ -192,6 +198,7 @@ type Watcher struct {
 }
 
 // NewWatcher creates and returns a Watcher.
+// NewWatcher 创建并返回一个 Watcher
 func NewWatcher() (*Watcher, error) {
 	port, e := syscall.CreateIoCompletionPort(syscall.InvalidHandle, 0, 0, 0)
 	if e != nil {
@@ -215,6 +222,7 @@ func NewWatcher() (*Watcher, error) {
 // Close closes a Watcher.
 // It sends a message to the reader goroutine to quit and removes all watches
 // associated with the watcher.
+// Close 关闭 Watcher
 func (w *Watcher) Close() error {
 	if w.isClosed {
 		return nil
@@ -231,6 +239,7 @@ func (w *Watcher) Close() error {
 }
 
 // AddWatch adds path to the watched file set.
+// AddWatch 添加路径到监视文件集合
 func (w *Watcher) AddWatch(path string, flags uint32) error {
 	if w.isClosed {
 		return errors.New("watcher already closed")
@@ -249,11 +258,13 @@ func (w *Watcher) AddWatch(path string, flags uint32) error {
 }
 
 // Watch adds path to the watched file set, watching all events.
+// watch 添加路径到监视文件集合，监视所有事件
 func (w *Watcher) watch(path string) error {
 	return w.AddWatch(path, sys_FS_ALL_EVENTS)
 }
 
 // RemoveWatch removes path from the watched file set.
+// removeWatch 从监视文件集合中移除路径
 func (w *Watcher) removeWatch(path string) error {
 	in := &input{
 		op:    opRemoveWatch,

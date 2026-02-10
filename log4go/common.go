@@ -45,6 +45,7 @@ func Register(name string, log newLoggerFunc) {
 	adapters[name] = log
 }
 
+// GetLevelName 获取日志级别名称
 func GetLevelName(level int) string {
 	if level <= LevelDebug && level >= LevelEmergency {
 		return levelName[level]
@@ -55,6 +56,7 @@ func GetLevelName(level int) string {
 // 获取当前时间
 var time_local *time.Location = nil
 
+// GetNow 获取当前时间
 func GetNow() (result time.Time) {
 	defer func() {
 		if info := recover(); info != nil {
@@ -68,6 +70,7 @@ func GetNow() (result time.Time) {
 	return
 }
 
+// CheckError 检查错误
 func CheckError(pos string, err error) {
 	if err != nil {
 		where := fmt.Sprintf("在%s失败，原因：%s", pos, err.Error())
@@ -75,6 +78,7 @@ func CheckError(pos string, err error) {
 	}
 }
 
+// GetParamString 获取字符串参数
 func GetParamString(name string, flag_value, default_value string) string {
 	//从环境变量读取参数
 	env_value := os.Getenv(name)
@@ -91,6 +95,7 @@ func GetParamString(name string, flag_value, default_value string) string {
 	return strings.TrimSpace(flag_value)
 }
 
+// GetParamInt 获取整数参数
 func GetParamInt(name string, flag_value int) int {
 	//从环境变量读取参数
 	env_value := os.Getenv(name)
@@ -104,6 +109,7 @@ func GetParamInt(name string, flag_value int) int {
 	return flag_value
 }
 
+// GetParamBool 获取布尔参数
 func GetParamBool(name string, flag_value bool) bool {
 	//从环境变量读取参数
 	env_value := os.Getenv(name)
@@ -122,6 +128,7 @@ func GetParamBool(name string, flag_value bool) bool {
 
 var IsDebug bool = false
 
+// FDebug 调试输出
 func FDebug(f string, v ...interface{}) {
 	//fmt.Println("FDebug", IsDebug)
 	if IsDebug {
@@ -158,7 +165,7 @@ func formatLog(f interface{}, v ...interface{}) string {
 	return fmt.Sprintf(msg, v...)
 }
 
-// 获取文件行数
+// GetFileLines 获取文件行数
 func GetFileLines(filename string) (int, error) {
 	fd, err := os.Open(filename)
 	if err != nil {
@@ -187,6 +194,7 @@ func GetFileLines(filename string) (int, error) {
 	return count, nil
 }
 
+// GetNetError 获取网络错误信息
 // 在日志库里有一个相同代码，需要同步修改。
 func GetNetError(err error) string {
 	if err == io.EOF {
@@ -278,6 +286,7 @@ func GetNetError(err error) string {
 	return err.Error()
 }
 
+// ShowArgs 显示参数
 func ShowArgs() {
 	Debug("共有 %d 个非Flag参数:\n", flag.NArg())
 	for i := 0; i < flag.NArg(); i++ {
@@ -285,6 +294,7 @@ func ShowArgs() {
 	}
 }
 
+// GetLogName 获取日志名称
 func GetLogName() string {
 	return *plog_name
 }
@@ -301,6 +311,7 @@ func init() {
 	plog_short = flag.BoolP(`log_short`, ``, false, `简化日志`)
 }
 
+// StartLogger 启动日志记录器
 func StartLogger(log_names ...string) {
 	var err error
 

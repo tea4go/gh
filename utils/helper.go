@@ -73,16 +73,19 @@ func (Self JsonTime) FromString(data string) error {
 	return nil
 }
 
+// IsAscii 判断字符串是否只包含 ASCII 字符
 func IsAscii(text_str string) bool {
 	temp := []rune(text_str)
 	return (temp[0] >= '0' && temp[0] <= '9') || (temp[0] >= 'a' && temp[0] <= 'z') || (temp[0] >= 'A' && temp[0] <= 'Z')
 }
 
+// IsNumber 判断字符串是否是数字
 func IsNumber(text_str string) bool {
 	temp := []rune(text_str)
 	return unicode.IsDigit(temp[0])
 }
 
+// IsHanZi 判断字符串是否以汉字开头
 func IsHanZi(text_str string) bool {
 	temp := []rune(text_str)
 	if len(temp) >= 1 {
@@ -92,6 +95,7 @@ func IsHanZi(text_str string) bool {
 	}
 }
 
+// IsChinese 判断字符串是否包含汉字
 func IsChinese(str string) bool {
 	var count int
 	for _, v := range str {
@@ -103,6 +107,7 @@ func IsChinese(str string) bool {
 	return count > 0
 }
 
+// SetRunFileName 设置运行文件名称
 func SetRunFileName(file string) string {
 	f, err := exec.LookPath(os.Args[0])
 	if err != nil {
@@ -161,9 +166,7 @@ func GetFullFileName(filename string) string {
 	}
 }
 
-// RealPath converts the given <path> to its absolute path
-// and checks if the file path exists.
-// If the file does not exist, return an empty string.
+// GetFileRealPath 获取文件的绝对路径，如果文件不存在返回空字符串
 func GetFileRealPath(path string) string {
 	p, err := filepath.Abs(path)
 	if err != nil {
@@ -175,13 +178,7 @@ func GetFileRealPath(path string) string {
 	return p
 }
 
-// Dir returns all but the last element of path, typically the path's directory.
-// After dropping the final element, Dir calls Clean on the path and trailing
-// slashes are removed.
-// If the `path` is empty, Dir returns ".".
-// If the `path` is ".", Dir treats the path as current working directory.
-// If the `path` consists entirely of separators, Dir returns a single separator.
-// The returned path does not end in a separator unless it is the root directory.
+// GetFileDir 获取路径的目录部分
 func GetFileDir(path string) string {
 	if path == "." {
 		return filepath.Dir(GetFileRealPath(path))
@@ -189,8 +186,7 @@ func GetFileDir(path string) string {
 	return filepath.Dir(path)
 }
 
-// Mkdir creates directories recursively with given <path>.
-// The parameter <path> is suggested to be an absolute path instead of relative one.
+// Mkdir 递归创建目录
 func Mkdir(path string) error {
 	if err := os.MkdirAll(path, os.ModeDir|os.ModePerm); err != nil {
 		return err
@@ -198,6 +194,7 @@ func Mkdir(path string) error {
 	return nil
 }
 
+// IsDir 判断路径是否是目录
 func IsDir(filename string) (bool, error) {
 	fi, err := os.Stat(filename)
 	if err != nil {
@@ -226,21 +223,12 @@ func GetFileExtName(path string) string {
 	return strings.TrimLeft(GetFileExt(path), ".")
 }
 
-// Basename returns the last element of path, which contains file extension.
-// Trailing path separators are removed before extracting the last element.
-// If the path is empty, Base returns ".".
-// If the path consists entirely of separators, Basename returns a single separator.
-// Example:
-// /var/www/file.js -> file.js
-// file.js          -> file.js
+// GetFileName 返回路径的最后一个元素（包含扩展名）
 func GetFileName(path string) string {
 	return filepath.Base(path)
 }
 
-// Name returns the last element of path without file extension.
-// Example:
-// /var/www/file.js -> file
-// file.js          -> file
+// GetFileBaseName 返回路径的最后一个元素（不包含扩展名）
 func GetFileBaseName(path string) string {
 	base := filepath.Base(path)
 	if i := strings.LastIndexByte(base, '.'); i != -1 {
@@ -249,6 +237,7 @@ func GetFileBaseName(path string) string {
 	return base
 }
 
+// FileIsExist 判断文件是否存在
 func FileIsExist(filename string) bool {
 	var exist = true
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
@@ -257,6 +246,7 @@ func FileIsExist(filename string) bool {
 	return exist
 }
 
+// GetFileSize 获取文件大小
 func GetFileSize(filename string) int64 {
 	if fi, err := os.Stat(filename); err == nil {
 		return fi.Size()
@@ -264,17 +254,20 @@ func GetFileSize(filename string) int64 {
 	return -1
 }
 
+// Md5 计算字符串的MD5值
 func Md5(test_str string) string {
 	hash := md5.New()
 	hash.Write([]byte(test_str))
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
+// Base64Encode Base64编码
 func Base64Encode(test_str string) string {
 	encode_str := base64.StdEncoding.EncodeToString([]byte(test_str))
 	return encode_str
 }
 
+// Base64Decode Base64解码
 func Base64Decode(test_str string) (string, error) {
 	decode_str, err := base64.StdEncoding.DecodeString(test_str)
 	if err != nil {
@@ -283,6 +276,7 @@ func Base64Decode(test_str string) (string, error) {
 	return string(decode_str), nil
 }
 
+// If 三元运算符模拟
 func If(condition bool, trueVal, falseVal interface{}) interface{} {
 	if condition {
 		return trueVal
@@ -337,6 +331,8 @@ func (b TSize) String() string {
 	}
 	return fmt.Sprintf("%6.0f", b)
 }
+
+// GetStringSize 将字符串大小转换为可读格式
 func GetStringSize(sBytes string) string {
 	var p TSize
 	var err error
@@ -350,30 +346,36 @@ func GetStringSize(sBytes string) string {
 	p = TSize(fBytes)
 	return p.String()
 }
+
+// GetFloatSize 将浮点数大小转换为可读格式
 func GetFloatSize(fBytes float64) string {
 	var p TSize
 	p = TSize(fBytes)
 	return p.String()
 }
 
+// GetInt64Size 将Int64大小转换为可读格式
 func GetInt64Size(iBytes int64) string {
 	var p TSize
 	p = TSize(iBytes)
 	return p.String()
 }
 
+// GetIntSize 将Int大小转换为可读格式
 func GetIntSize(iBytes int) string {
 	var p TSize
 	p = TSize(iBytes)
 	return p.String()
 }
 
+// GetUInt64Size 将UInt64大小转换为可读格式
 func GetUInt64Size(iBytes uint64) string {
 	var p TSize
 	p = TSize(iBytes)
 	return p.String()
 }
 
+// Round 四舍五入
 func Round(val float64, places int) float64 {
 	var t float64
 	f := math.Pow10(places)
@@ -402,6 +404,7 @@ func Round(val float64, places int) float64 {
 	return t
 }
 
+// GetTimeText 获取时间文本描述
 func GetTimeText(fBytes int) string {
 	m := 0.0
 	if fBytes >= 60 {
@@ -438,6 +441,7 @@ func GetTimeText(fBytes int) string {
 	}
 }
 
+// IIFbyString 字符串类型的三元运算
 func IIFbyString(flag bool, A, B string) string {
 	if flag {
 		return A
@@ -445,6 +449,7 @@ func IIFbyString(flag bool, A, B string) string {
 	return B
 }
 
+// IIFByTime 时间类型的三元运算
 func IIFByTime(flag bool, A, B time.Time) time.Time {
 	if flag {
 		return A
@@ -452,6 +457,7 @@ func IIFByTime(flag bool, A, B time.Time) time.Time {
 	return B
 }
 
+// IIFbyInt 整数类型的三元运算
 func IIFbyInt(flag bool, A, B int) int {
 	if flag {
 		return A
@@ -459,6 +465,7 @@ func IIFbyInt(flag bool, A, B int) int {
 	return B
 }
 
+// IIF 通用三元运算
 func IIF(b bool, t, f interface{}) interface{} {
 	if b {
 		return t
@@ -466,6 +473,7 @@ func IIF(b bool, t, f interface{}) interface{} {
 	return f
 }
 
+// LoadFileText 加载文本文件内容
 func LoadFileText(file_name string) (string, error) {
 	var msg string
 	where := fmt.Sprintf("加载文件(%s)", file_name)
@@ -478,11 +486,13 @@ func LoadFileText(file_name string) (string, error) {
 	}
 }
 
+// SetJson 解析JSON字符串到对象
 // save_object对象一定是指针
 func SetJson(json_text string, save_object interface{}) error {
 	return json.Unmarshal([]byte(json_text), save_object)
 }
 
+// LoadJson 从文件加载JSON到对象
 // save_object对象一定是指针
 func LoadJson(json_file string, save_object interface{}) error {
 	var msg string
@@ -502,6 +512,7 @@ func LoadJson(json_file string, save_object interface{}) error {
 	}
 }
 
+// GetJson 将对象转换为JSON字符串
 func GetJson(object interface{}) string {
 	s, _ := json.Marshal(object)
 	var out bytes.Buffer
@@ -509,6 +520,7 @@ func GetJson(object interface{}) string {
 	return string(out.Bytes())
 }
 
+// SaveJson 将对象保存为JSON文件
 func SaveJson(json_file string, save_object interface{}) error {
 	var msg string
 
@@ -536,6 +548,7 @@ func SaveJson(json_file string, save_object interface{}) error {
 	return nil
 }
 
+// DosName 生成DOS兼容的文件名
 // prepare-commit-～.sampl
 func DosName(str string) string {
 	fs := strings.Split(str, ".")
@@ -557,6 +570,7 @@ func DosName(str string) string {
 	return file + ext
 }
 
+// Substr 截取字符串
 func Substr(str string, start, length int) string {
 	rs := []rune(str)
 	rl := len(rs)
@@ -646,6 +660,7 @@ func GetFileModTime(filename string) (time.Time, error) {
 	return fi.ModTime(), nil
 }
 
+// GetMapByString 从Map中获取字符串值
 func GetMapByString(mapi map[string]string, name, default_value string) string {
 	if v, ok := mapi[name]; ok {
 		return v
@@ -653,6 +668,7 @@ func GetMapByString(mapi map[string]string, name, default_value string) string {
 	return default_value
 }
 
+// GetMapByBool 从Map中获取布尔值
 func GetMapByBool(mapi map[string]string, name string, default_value bool) bool {
 	if v, ok := mapi[name]; ok {
 		re := strings.ToLower(v)
@@ -660,6 +676,8 @@ func GetMapByBool(mapi map[string]string, name string, default_value bool) bool 
 	}
 	return default_value
 }
+
+// GetMapByInt 从Map中获取整数值
 func GetMapByInt(mapi map[string]string, name string, default_value int) int {
 	if v, ok := mapi[name]; ok {
 		re, err := strconv.Atoi(v)
@@ -674,15 +692,18 @@ func GetMapByInt(mapi map[string]string, name string, default_value int) int {
 
 var TimeLocation *time.Location
 
+// GetNow 获取当前时间（CST时区）
 func GetNow() time.Time {
 	location := time.FixedZone("CST", 8*60*60)
 	return time.Now().In(location)
 }
 
+// GetLastYear 获取去年的今天
 func GetLastYear() time.Time {
 	return time.Now().AddDate(-1, 0, 0)
 }
 
+// GetTimeAgo 获取时间间隔描述
 func GetTimeAgo(t time.Time) string {
 	fb := int(GetNow().Unix() - t.Unix())
 	if fb > 60*60*24*7 {
@@ -698,6 +719,7 @@ func GetTimeAgo(t time.Time) string {
 	}
 }
 
+// StringToTime 字符串转时间
 func StringToTime(data_str string) (time.Time, error) {
 	u, err := time.ParseInLocation("2006-01-02 15:04:05", data_str, TimeLocation)
 	if err != nil {
@@ -707,6 +729,7 @@ func StringToTime(data_str string) (time.Time, error) {
 	return u, nil
 }
 
+// StringToTimeByTemplates 根据模板将字符串转时间
 func StringToTimeByTemplates(tm, templates string) (time.Time, error) {
 	t, err := time.ParseInLocation(templates, tm, TimeLocation)
 	if nil == err && !t.IsZero() {
@@ -716,6 +739,7 @@ func StringToTimeByTemplates(tm, templates string) (time.Time, error) {
 	return time.Time{}, err
 }
 
+// GetDebugStack 获取调试堆栈信息
 func GetDebugStack() string {
 	stacks := strings.Split(string(debug.Stack()), "\n")
 	result := "当前堆栈："
@@ -732,6 +756,8 @@ func GetDebugStack() string {
 
 	return result
 }
+
+// GetCallStack 获取调用堆栈信息
 func GetCallStack() (level int, stack string, file string, line int) {
 	loggerFuncCallDepth := 1 //要过滤掉当前函数的层数
 	level = loggerFuncCallDepth

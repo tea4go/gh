@@ -58,11 +58,13 @@ func (w *Watcher) purgeEvents() {
 }
 
 // Watch a given file path
+// Watch 监视给定的文件路径
 func (w *Watcher) Watch(path string) error {
 	return w.WatchFlags(path, FSN_ALL)
 }
 
 // Watch a given file path for a particular set of notifications (FSN_MODIFY etc.)
+// WatchFlags 监视给定文件路径的特定通知集
 func (w *Watcher) WatchFlags(path string, flags uint32) error {
 	w.fsnmut.Lock()
 	w.fsnFlags[path] = flags
@@ -71,6 +73,7 @@ func (w *Watcher) WatchFlags(path string, flags uint32) error {
 }
 
 // Remove a watch on a file
+// RemoveWatch 移除对文件的监视
 func (w *Watcher) RemoveWatch(path string) error {
 	w.fsnmut.Lock()
 	delete(w.fsnFlags, path)
@@ -80,6 +83,7 @@ func (w *Watcher) RemoveWatch(path string) error {
 
 // String formats the event e in the form
 // "filename: DELETE|MODIFY|..."
+// String 格式化事件
 func (e *FileEvent) String() string {
 	var events string = ""
 

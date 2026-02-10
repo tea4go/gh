@@ -190,6 +190,7 @@ func (c *connWriter) writeMsgByConn(msg string) (err error) {
 	return err
 }
 
+// WriteMsg 写入消息
 func (c *connWriter) WriteMsg(fileName string, fileLine int, callLevel int, callFunc string, logLevel int, when time.Time, msg string) error {
 	if logLevel > c.Level {
 		return nil
@@ -232,10 +233,12 @@ func (c *connWriter) Destroy() {
 	}
 }
 
+// SetLevel 设置日志级别
 func (w *connWriter) SetLevel(l int) {
 	w.Level = l
 }
 
+// GetLevel 获取日志级别
 func (w *connWriter) GetLevel() int {
 	return w.Level
 }

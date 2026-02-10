@@ -26,6 +26,7 @@ type ResultWeixin struct {
 	ErrorMsg    string `json:"errmsg"`
 }
 
+// Init 初始化
 // adb shell am start -n org.autojs.autojs/.external.open.RunIntentActivity -d /sdcard/AData/MyJS/auto_run.js -t application/x-javascript
 func (w *WorkWeixin) Init(corpid string, corpsecret string, agentId int) {
 	w.CorpID = corpid
@@ -34,10 +35,12 @@ func (w *WorkWeixin) Init(corpid string, corpsecret string, agentId int) {
 	w.GetAccessToken()
 }
 
+// SendMessage 发送消息
 func (w *WorkWeixin) SendMessage(text string) bool {
 	return w.SendUserMessage("Tony", text)
 }
 
+// SendUserMessage 发送用户消息
 func (w *WorkWeixin) SendUserMessage(touser, text string) bool {
 	message_text := map[string]interface{}{
 		"touser":  touser,
@@ -85,6 +88,7 @@ func (w *WorkWeixin) SendUserMessage(touser, text string) bool {
 
 }
 
+// GetAccessToken 获取 AccessToken
 func (w *WorkWeixin) GetAccessToken() string {
 	if w.Token != "" {
 		return w.Token

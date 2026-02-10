@@ -27,10 +27,12 @@ type CmdPlus struct {
 	mu         sync.Mutex
 }
 
+// SetShellName 设置 Shell 名称
 func SetShellName(name string) {
 	shell_name = name
 }
 
+// ConvertByte2String 将字节转换为字符串
 func ConvertByte2String(byte []byte, charset string) string {
 	var str string
 	switch charset {
@@ -46,12 +48,14 @@ func ConvertByte2String(byte []byte, charset string) string {
 	return str
 }
 
+// Terminate 终止进程
 func (Self *CmdPlus) Terminate() {
 	if Self.cancelFunc != nil {
 		Self.cancelFunc()
 	}
 }
 
+// Wait 等待进程结束
 func (Self *CmdPlus) Wait() error {
 	if Self.Process == nil {
 		return errors.New("程序没有启动！")
@@ -87,6 +91,7 @@ func (Self *CmdPlus) Wait() error {
 	return <-errCh
 }
 
+// ShowConsole 显示控制台
 func (Self *CmdPlus) ShowConsole(flag bool) {
 	if flag {
 		Self.Stdout = os.Stdout
@@ -97,6 +102,7 @@ func (Self *CmdPlus) ShowConsole(flag bool) {
 	}
 }
 
+// SetEnv 设置环境变量
 func (Self *CmdPlus) SetEnv(key, value string) bool {
 	find := false
 	for i, kv := range Self.Env {

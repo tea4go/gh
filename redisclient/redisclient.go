@@ -34,22 +34,26 @@ type TRedisClient struct {
 var instance *TRedisClient
 var once sync.Once
 
+// GetClient 获取 Redis 客户端
 func (rp *TRedisClient) GetClient() *rediss.ClusterClient {
 	return rp.poollist
 }
 
 //订阅主题
+// Sub 订阅主题
 func (rp *TRedisClient) Sub(topic string) *rediss.PubSub {
 	var ctx = context.Background()
 	return rp.poollist.PSubscribe(ctx, rp.head+topic)
 }
 
 //发送主题
+// Pub 发布消息
 func (rp *TRedisClient) Pub(topic, msg string) (int64, error) {
 	var ctx = context.Background()
 	return rp.poollist.Publish(ctx, topic, msg).Result()
 }
 
+// Init 初始化
 func (rp *TRedisClient) Init(cfgStr string) error {
 	var ctx = context.Background()
 	err := json.Unmarshal([]byte(cfgStr), rp)
@@ -78,10 +82,12 @@ func (rp *TRedisClient) Init(cfgStr string) error {
 	return rp.poollist.Ping(ctx).Err()
 }
 
+// GetHead 获取头部
 func (Self *TRedisClient) GetHead() string {
 	return Self.head
 }
 
+// SetHead 设置头部
 func (Self *TRedisClient) SetHead(head string) {
 	if head != "" {
 		if head[0] == '/' {
@@ -100,6 +106,7 @@ func (Self *TRedisClient) SetHead(head string) {
 /**
  * Set Value
  */
+// Set 设置值
 func (Self *TRedisClient) Set(key string, value string, args ...interface{}) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -122,6 +129,7 @@ func (Self *TRedisClient) Set(key string, value string, args ...interface{}) (bo
 /**
  * Exists Single Key
  */
+// Exists 检查 Key 是否存在
 func (Self *TRedisClient) Exists(key string) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -132,6 +140,7 @@ func (Self *TRedisClient) Exists(key string) bool {
 /**
  * Get Single Key
  */
+// Get 获取值
 func (Self *TRedisClient) Get(key string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -146,6 +155,7 @@ func (Self *TRedisClient) Get(key string) (string, error) {
 /**
  * GetExpire Single Key
  */
+// GetExpire 获取过期时间
 func (Self *TRedisClient) GetExpire(key string) (time.Duration, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -160,6 +170,7 @@ func (Self *TRedisClient) GetExpire(key string) (time.Duration, error) {
 /**
  * Del Single Key
  */
+// Del 删除 Key
 func (Self *TRedisClient) Del(key string) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()

@@ -57,6 +57,7 @@ type GobConnection interface {
 
 var gobPool sync.Pool
 
+// NewGobConnection 创建一个新的Gob连接
 func NewGobConnection(conn net.Conn) GobConnection {
 	if gcn, ok := gobPool.Get().(*gobConnection); ok {
 		gcn.rwc = conn
@@ -181,6 +182,7 @@ var (
 	Errortype = errors.New("type not register")
 )
 
+// GetMsgType 获取消息类型
 func GetMsgType(name string) (reflect.Type, error) {
 	typ, ok := typeMap[name]
 	if ok {
@@ -189,6 +191,7 @@ func GetMsgType(name string) (reflect.Type, error) {
 	return nil, Errortype
 }
 
+// GetMsgAllType 获取所有注册的消息类型
 func GetMsgAllType() []string {
 	list := make([]string, 0, len(typeMap))
 	for name, _ := range typeMap {
@@ -197,10 +200,12 @@ func GetMsgAllType() []string {
 	return list
 }
 
+// RegisterType 注册消息类型
 func RegisterType(typ reflect.Type) {
 	typeMap[typ.String()] = typ
 }
 
+// DeleteType 删除消息类型
 func DeleteType(name string) {
 	delete(typeMap, name)
 }

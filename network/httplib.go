@@ -59,7 +59,7 @@ func SetDefaultSettingByTimeout(connectTimeout, readWriteTimeout time.Duration) 
 	defaultSetting.ReadWriteTimeout = readWriteTimeout
 }
 
-// SetDefaultSetting Overwrite default settings
+// SetDefaultSetting 覆盖默认设置
 func SetDefaultSetting(setting THttpSettings) {
 	settingMutex.Lock()
 	defer settingMutex.Unlock()
@@ -86,6 +86,7 @@ func GetHttpRemoteAddr(req *http.Request) string {
 		return addr
 	}
 }
+// GetHttpRemoteAddrPort 获取HTTP请求的客户端真实IP地址和端口
 func GetHttpRemoteAddrPort(req *http.Request) string {
 	addr := ""
 	if req != nil {
@@ -102,7 +103,7 @@ func GetHttpRemoteAddrPort(req *http.Request) string {
 	}
 }
 
-// NewTRequest return *THttpRequest with specific method
+// NewRequest 返回指定方法的 *THttpRequest
 func NewRequest(rawurl, method string) *THttpRequest {
 	var resp http.Response
 	u, err := url.Parse(rawurl)
@@ -127,17 +128,17 @@ func NewRequest(rawurl, method string) *THttpRequest {
 	}
 }
 
-// Get returns *THttpRequest with GET method.
+// HttpGet 返回 GET 方法的 *THttpRequest
 func HttpGet(url string) *THttpRequest {
 	return NewRequest(url, "GET")
 }
 
-// Post returns *THttpRequest with POST method.
+// HttpPost 返回 POST 方法的 *THttpRequest
 func HttpPost(url string) *THttpRequest {
 	return NewRequest(url, "POST")
 }
 
-// Put returns *THttpRequest with PUT method.
+// HttpPut 返回 PUT 方法的 *THttpRequest
 func HttpPut(url string) *THttpRequest {
 	return NewRequest(url, "PUT")
 }
@@ -147,7 +148,7 @@ func HttpDelete(url string) *THttpRequest {
 	return NewRequest(url, "DELETE")
 }
 
-// Head returns *THttpRequest with HEAD method.
+// HttpHead 返回 HEAD 方法的 *THttpRequest
 func HttpHead(url string) *THttpRequest {
 	return NewRequest(url, "HEAD")
 }
@@ -943,6 +944,7 @@ func SimpleHttpPost(url_str string, body interface{}, conn_timeout, rw_timeout t
 	return resp.StatusCode, respBody, nil
 }
 
+// DownloadURL 下载URL内容并按行分割
 func DownloadURL(url_str string, conn_timeout, rw_timeout time.Duration) (int, []string, error) {
 	c := http.Client{
 		Transport: &http.Transport{
@@ -1039,6 +1041,7 @@ func DownloadFile(url_str string, out_file string, conn_timeout, rw_timeout time
 	return nil
 }
 
+// DownloadTextFile 下载文本文件并按行分割
 func DownloadTextFile(url_str string, conn_timeout, rw_timeout time.Duration) (int, []string, error) {
 	c := http.Client{
 		Transport: &http.Transport{
@@ -1073,6 +1076,7 @@ func DownloadTextFile(url_str string, conn_timeout, rw_timeout time.Duration) (i
 	return resp.StatusCode, lines, nil
 }
 
+// SimpleHttpGet 简单的HTTP GET请求
 func SimpleHttpGet(url_str string, conn_timeout, rw_timeout time.Duration) (int, []byte, error) {
 	c := http.Client{
 		Transport: &http.Transport{
@@ -1189,6 +1193,7 @@ func webManagerHome(w http.ResponseWriter, r *http.Request) {
 var WebManagerAPI func(w http.ResponseWriter, r *http.Request)
 var WebAutoTestAPI func(w http.ResponseWriter, r *http.Request, re map[string]interface{}) map[string]interface{}
 
+// OpenWebManager 开启Web管理服务
 func OpenWebManager(ports ...int) *http.ServeMux {
 	ports = append(ports, 54321)
 	port := ports[0]
@@ -1220,6 +1225,7 @@ func SetUserAndPwd(AUser, APass string) {
 	validUsers[AUser] = APass
 }
 
+// SetBasicAuth 设置Basic认证信息
 func SetBasicAuth(Auth string) {
 	Auth = strings.ToLower(Auth)
 	auths := strings.Split(Auth, ":")
@@ -1271,6 +1277,7 @@ func BasicAuth(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// BasicAuth2 Basic认证中间件（Handler版本）
 func BasicAuth2(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if len(validUsers) == 0 {

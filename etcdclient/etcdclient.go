@@ -25,6 +25,7 @@ var once sync.Once
 /**
  * 初始化一个单例,一般用于程序启动时
  */
+// InitInstance 初始化单例
 func InitInstance() *TEtcdClient {
 	if instance == nil {
 		client, err := Connect([]string{"127.0.0.1:2379"})
@@ -38,6 +39,7 @@ func InitInstance() *TEtcdClient {
 /**
  * 获取一个单例,可以用这个不需要考虑线程安全
  */
+// GetInstance 获取单例
 func GetInstance() *TEtcdClient {
 	if instance == nil {
 		instance = InitInstance()
@@ -48,6 +50,7 @@ func GetInstance() *TEtcdClient {
 /**
  * 获取一个线程安全的单例
  */
+// GetSafeInstance 获取线程安全的单例
 func GetSafeInstance() *TEtcdClient {
 	once.Do(func() {
 		instance = InitInstance()
@@ -58,10 +61,12 @@ func GetSafeInstance() *TEtcdClient {
 /**
  * 连接etcd
  */
+// GetHead 获取头部
 func (etcd *TEtcdClient) GetHead() string {
 	return etcd.head
 }
 
+// SetHead 设置头部
 func (etcd *TEtcdClient) SetHead(head string) {
 	if head != "" {
 		if head[0] == '/' {
@@ -80,6 +85,7 @@ func (etcd *TEtcdClient) SetHead(head string) {
 /**
  * Set Value
  */
+// Set 设置值
 func (etcd *TEtcdClient) Set(key string, value string, args ...int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -109,6 +115,7 @@ func (etcd *TEtcdClient) Set(key string, value string, args ...int) error {
 /**
  * hash get,获取一个map键值对结构,对于排序的结构从ectd查出来是有序的,但map不保证有序性，所以放入map后是无序的
  */
+// HGet Hash 获取
 func (etcd *TEtcdClient) HGet(getResp *clientv3.GetResponse, err error) (map[string]string, int64, error) {
 	result := make(map[string]string)
 	if err != nil {
@@ -126,6 +133,7 @@ func (etcd *TEtcdClient) HGet(getResp *clientv3.GetResponse, err error) (map[str
 /**
  * Get Single Key
  */
+// Get 获取单个 Key
 func (etcd *TEtcdClient) Get(key string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -137,6 +145,7 @@ func (etcd *TEtcdClient) Get(key string) (string, error) {
 /**
  * Get By prefix Mutiple Key
  */
+// GetAll 获取所有前缀匹配的 Key
 func (etcd *TEtcdClient) GetAll(prefix string) (map[string]string, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -147,6 +156,7 @@ func (etcd *TEtcdClient) GetAll(prefix string) (map[string]string, int64, error)
 /**
  * 获取最大键,用于获取最大ID,比如Key_001 ... Key_102 最大为Key_102
  */
+// GetMaxKey 获取最大 Key
 func (etcd *TEtcdClient) GetMaxKey(prefix string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -168,6 +178,7 @@ func (etcd *TEtcdClient) GetMaxKey(prefix string) (string, error) {
 /**
  * Count By prefix data
  */
+// Count 统计前缀匹配的数量
 func (etcd *TEtcdClient) Count(prefix string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -184,6 +195,7 @@ func (etcd *TEtcdClient) Count(prefix string) (int64, error) {
 /**
  * Get By prefix Limit N
  */
+// GetLimit 获取前缀匹配的前 N 个
 func (etcd *TEtcdClient) GetLimit(prefix string, limit int) (map[string]string, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -195,6 +207,7 @@ func (etcd *TEtcdClient) GetLimit(prefix string, limit int) (map[string]string, 
 /**
  * Get By Range,Not Contains endKey,[startKey,endKey)
  */
+// GetRange 获取范围内的 Key
 func (etcd *TEtcdClient) GetRange(startKey string, endKey string) (map[string]string, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -205,6 +218,7 @@ func (etcd *TEtcdClient) GetRange(startKey string, endKey string) (map[string]st
 /**
  * Get By Range,Contains StartKey[startKey,N-1]
  */
+// GetRangeLimit 获取范围内的 Key 并限制数量
 func (etcd *TEtcdClient) GetRangeLimit(startKey string, limit int) (map[string]string, int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -216,6 +230,7 @@ func (etcd *TEtcdClient) GetRangeLimit(startKey string, limit int) (map[string]s
 /**
  * Delete One
  */
+// Del 删除单个 Key
 func (etcd *TEtcdClient) Del(key string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -229,6 +244,7 @@ func (etcd *TEtcdClient) Del(key string) (int64, error) {
 /**
  * Delete All By Prefix
  */
+// DelAll 删除所有前缀匹配的 Key
 func (etcd *TEtcdClient) DelAll(prefix string) (int64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), OperTimeout)
 	defer cancel()
@@ -243,6 +259,7 @@ func (etcd *TEtcdClient) DelAll(prefix string) (int64, error) {
 /**
  * 返回原生接口
  */
+// GetClient 获取原生客户端
 func (etcd *TEtcdClient) GetClient() *clientv3.Client {
 	return etcd.client
 }
@@ -250,6 +267,7 @@ func (etcd *TEtcdClient) GetClient() *clientv3.Client {
 /**
  * 返回原生接口
  */
+// GetKV 获取 KV 接口
 func (etcd *TEtcdClient) GetKV() clientv3.KV {
 	return etcd.client.KV
 }
@@ -257,6 +275,7 @@ func (etcd *TEtcdClient) GetKV() clientv3.KV {
 /**
  * 连接etcd
  */
+// Connect 连接 Etcd
 func Connect(etcdAddrs []string) (*TEtcdClient, error) {
 	etcd := &TEtcdClient{head: "tea4go"}
 	cli, err := clientv3.New(clientv3.Config{

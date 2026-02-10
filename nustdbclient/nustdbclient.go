@@ -40,6 +40,7 @@ var once sync.Once
 /**
  * 初始化一个单例,一般用于程序启动时
  */
+// InitInstance 初始化单例
 func InitInstance(bucket_name, db_path string, re_new bool) (*TNustDBClient, error) {
 	if instance == nil {
 		if re_new {
@@ -98,6 +99,7 @@ func InitInstance(bucket_name, db_path string, re_new bool) (*TNustDBClient, err
 /**
  * 获取一个单例,可以用这个不需要考虑线程安全
  */
+// GetInstance 获取单例
 func GetInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	if instance == nil {
 		instance, _ = InitInstance(bucket_name, db_path, re_new)
@@ -111,6 +113,7 @@ func GetInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 /**
  * 获取一个线程安全的单例
  */
+// GetSafeInstance 获取线程安全的单例
 func GetSafeInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	once.Do(func() {
 		instance, _ = InitInstance(bucket_name, db_path, re_new)
@@ -121,14 +124,17 @@ func GetSafeInstance(bucket_name, db_path string, re_new bool) *TNustDBClient {
 	return instance
 }
 
+// Merge 合并
 func (d *TNustDBClient) Merge() error {
 	return d.db.Merge()
 }
 
+// GetHead 获取头部
 func (d *TNustDBClient) GetHead() string {
 	return d.head
 }
 
+// SetHead 设置头部
 func (d *TNustDBClient) SetHead(head string) {
 	if head != "" {
 		d.head = head
@@ -140,10 +146,12 @@ func (d *TNustDBClient) SetHead(head string) {
 	}
 }
 
+// GetBucketName 获取 Bucket 名称
 func (d *TNustDBClient) GetBucketName() string {
 	return d.bucket
 }
 
+// LPush 左侧推入
 func (s *TNustDBClient) LPush(keyname string, value string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
@@ -162,6 +170,7 @@ func (s *TNustDBClient) LPush(keyname string, value string) error {
 	return err
 }
 
+// LPushByBucket 指定 Bucket 左侧推入
 func (s *TNustDBClient) LPushByBucket(bucket_name, keyname string, value string) error {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -186,6 +195,7 @@ func (s *TNustDBClient) LPushByBucket(bucket_name, keyname string, value string)
 	return err
 }
 
+// LRangeByBucket 指定 Bucket 获取列表范围
 func (s *TNustDBClient) LRangeByBucket(bucket_name, keyname string) (items []string, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -201,6 +211,7 @@ func (s *TNustDBClient) LRangeByBucket(bucket_name, keyname string) (items []str
 	return
 }
 
+// LUpdateMaxValue 更新列表最大值
 func (s *TNustDBClient) LUpdateMaxValue(bucket_name string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -227,6 +238,8 @@ func (s *TNustDBClient) LUpdateMaxValue(bucket_name string) (err error) {
 
 	return
 }
+
+// LGetAllValue 获取所有列表值
 func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -257,14 +270,17 @@ func (s *TNustDBClient) LGetAllValue(bucket_name string) (items []TNustDBList, e
 	return
 }
 
+// LSetMaxSize 设置列表最大大小
 func (s *TNustDBClient) LSetMaxSize(maxSize int) {
 	s.maxListSize = maxSize
 }
 
+// LGetMaxSize 获取列表最大大小
 func (s *TNustDBClient) LGetMaxSize() int {
 	return s.maxListSize
 }
 
+// LSize 获取列表大小
 func (s *TNustDBClient) LSize(bucket_name, keyname string) (count int, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -282,6 +298,7 @@ func (s *TNustDBClient) LSize(bucket_name, keyname string) (count int, err error
 	return
 }
 
+// LPrintf 打印列表
 func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -316,6 +333,7 @@ func (s *TNustDBClient) LPrintf(bucket_name, keyname string) (err error) {
   - Set Value
     ttl : NusDB支持TTL(存活时间)的功能，可以对指定的bucket里的key过期时间的设置
 */
+// SetValue 设置值
 func (s *TNustDBClient) SetValue(keyname string, value string, args ...int) error {
 	var ttl uint32
 	if len(args) >= 1 {
@@ -329,6 +347,7 @@ func (s *TNustDBClient) SetValue(keyname string, value string, args ...int) erro
 	return err
 }
 
+// SetValueByBucket 指定 Bucket 设置值
 func (s *TNustDBClient) SetValueByBucket(bucket_name, keyname string, value string, args ...int) error {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -347,6 +366,7 @@ func (s *TNustDBClient) SetValueByBucket(bucket_name, keyname string, value stri
 	return err
 }
 
+// GetValue 获取值
 func (s *TNustDBClient) GetValue(keyname string) (value string, err error) {
 	err = s.db.View(
 		func(tx *nutsdb.Tx) error {
@@ -361,6 +381,7 @@ func (s *TNustDBClient) GetValue(keyname string) (value string, err error) {
 	return
 }
 
+// GetValueByBucket 指定 Bucket 获取值
 func (s *TNustDBClient) GetValueByBucket(bucket_name, keyname string) (value string, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -378,6 +399,7 @@ func (s *TNustDBClient) GetValueByBucket(bucket_name, keyname string) (value str
 	return
 }
 
+// GetAllValue 获取所有值
 func (s *TNustDBClient) GetAllValue(bucket_name string) (items []*TNustDBField, err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -401,6 +423,7 @@ func (s *TNustDBClient) GetAllValue(bucket_name string) (items []*TNustDBField, 
 	return items, err
 }
 
+// Printf 打印所有值
 func (s *TNustDBClient) Printf(bucket_name, keyname string) (err error) {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -429,6 +452,7 @@ func (s *TNustDBClient) Printf(bucket_name, keyname string) (err error) {
 	return err
 }
 
+// DelValue 删除值
 func (s *TNustDBClient) DelValue(keyname string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
@@ -438,6 +462,7 @@ func (s *TNustDBClient) DelValue(keyname string) error {
 	return err
 }
 
+// DelValueByBucket 指定 Bucket 删除值
 func (s *TNustDBClient) DelValueByBucket(bucket_name, keyname string) error {
 	if bucket_name == "" {
 		bucket_name = s.bucket
@@ -451,6 +476,7 @@ func (s *TNustDBClient) DelValueByBucket(bucket_name, keyname string) error {
 	return err
 }
 
+// DelAllValue 删除所有值
 func (s *TNustDBClient) DelAllValue(keyname string) error {
 	err := s.db.Update(
 		func(tx *nutsdb.Tx) error {
@@ -470,6 +496,7 @@ func (s *TNustDBClient) DelAllValue(keyname string) error {
 	return err
 }
 
+// DelAllValueByBucket 指定 Bucket 删除所有值
 func (s *TNustDBClient) DelAllValueByBucket(bucket_name, keyname string) error {
 	if bucket_name == "" {
 		bucket_name = s.bucket
