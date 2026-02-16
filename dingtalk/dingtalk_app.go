@@ -323,6 +323,45 @@ func (Self *TDingTalkApp) GetDepartment(depid int) (*TDeptInfo, error) {
 	}
 }
 
+// 获取部门详情
+func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	//首先通过免authcode登授权码,获取当前登录userid
+	req := network.HttpGet(Self.ddurl+"/user/listid").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("dept_id", strconv.Itoa(depid))
+
+	info := struct {
+		TResult
+		UserIDList []string `json:"userid_list"`
+	}{}
+	err = req.ToJSON(&info)
+	if err != nil {
+		return nil, err
+	}
+	if info.ErrCode == 0 {
+		var users []*TDDUser
+		for _, v := range info.UserIDList {
+			user, err := Self.GetUserInfo(v)
+			if err != nil {
+				return nil, err
+			} else {
+				users = append(users, user)
+			}
+		}
+		return users, nil
+	} else if info.ErrCode == 503 {
+		Self.token = nil
+		return Self.GetDeptUsers(depid)
+	} else {
+		return nil, errors.New(info.ErrMsg)
+	}
+}
+
 // GetOrgName 获取组织名称
 func (Self *TDingTalkApp) GetOrgName(depids []int) (string, error) {
 	logs.Debug("GetJobName() : 获取钉钉部门信息")
