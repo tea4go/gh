@@ -310,13 +310,19 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	}
 
 	ddurl := "https://api.dingtalk.com/v1.0/contact/users/search"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
-	req.Param("queryWord", name)
-	req.Param("offset", "0")
-	req.Param("size", "100")
-	req.Param("fullMatchField", "1")
 	logs.Debug("访问接口：%s (根据姓名获取用户列表)", ddurl)
+
+	header := make(map[string]string)
+	header["x-acs-dingtalk-access-token"] = Self.token.AccessToken
+	header["Content-Type"] = "application/json"
+	var reqData struct {
+		QueryWord string `json:"queryWord"` // 搜索关键字（驼峰命名）
+		Offset    int    `json:"offset"`    // 分页偏移量，必需
+		Size      int    `json:"size"`      // 分页大小，必需
+	}
+	reqData.QueryWord = name
+	reqData.Offset = 0
+	reqData.Size = 100
 	var dingResp struct {
 		ErrCode    string   `json:"code"`
 		ErrMsg     string   `json:"message"`
@@ -324,24 +330,25 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 		TotalCount int      `json:"totalCount"`
 		List       []string `json:"list"`
 	}
-	fmt.Println(req.String())
-	err = req.ToJSON(&dingResp)
-	if err != nil {
+	state_code, _, output, err := network.HttpRequestBHB("POST", ddurl, false, reqData, header, &dingResp)
+	if state_code == 0 && err != nil {
 		return nil, err
 	}
-	if dingResp.ErrCode != "" {
+	if state_code == 200 {
+		logs.Debug("查询 %s 有 %d 个用户", name, dingResp.TotalCount)
+		var users []*TDDV2User
+		for _, userid := range dingResp.List {
+			info, err := Self.GetV2UserInfo(userid)
+			if err != nil {
+				return nil, err
+			}
+			users = append(users, info)
+		}
+		return users, nil
+	} else {
+		fmt.Println(state_code, string(output))
 		return nil, errors.New(dingResp.ErrMsg)
 	}
-
-	var users []*TDDV2User
-	for _, userid := range dingResp.List {
-		info, err := Self.GetV2UserInfo(userid)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, info)
-	}
-	return users, nil
 }
 
 // GetUserInfo 根据 UserID 获取用户信息

@@ -115,12 +115,12 @@ func TestGetV2UserInfoByUnionId(t *testing.T) {
 }
 
 func TestGetV2UsersByName(t *testing.T) {
-	users, err := app.GetV2UsersByName("刘启")
+	users, err := app.GetV2UsersByName("刘林")
 	if err != nil {
 		t.Fatalf("查询用户名出错: %v", err)
 	}
-	t.Logf("用户信息: %+v", users)
+
 	for _, v := range users {
-		t.Logf("%s - %s", v.UserId, v.StaffName)
+		t.Logf("[%s] %s - %s(%s/%s)", v.UserId, v.StaffCode, v.StaffName, v.Attrs.Org, v.Attrs.Job)
 	}
 }
