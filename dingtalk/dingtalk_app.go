@@ -301,6 +301,49 @@ func (Self *TDingTalkApp) GetV2UserInfoByUnionId(unionid string) (*TDDV2User, er
 	return Self.GetV2UserInfo(info.UserId)
 }
 
+// GetUsersByName 根据姓名获取用户列表
+// https://oapi.dingtalk.com/user/get_by_name?access_token=ACCESS_TOKEN&name=张三
+func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	ddurl := "https://api.dingtalk.com/v1.0/contact/users/search"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
+	req.Param("queryWord", name)
+	req.Param("offset", "0")
+	req.Param("size", "100")
+	req.Param("fullMatchField", "1")
+	logs.Debug("访问接口：%s (根据姓名获取用户列表)", ddurl)
+	var dingResp struct {
+		ErrCode    string   `json:"code"`
+		ErrMsg     string   `json:"message"`
+		HasMore    bool     `json:"hasMore"`
+		TotalCount int      `json:"totalCount"`
+		List       []string `json:"list"`
+	}
+	fmt.Println(req.String())
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	if dingResp.ErrCode != "" {
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+
+	var users []*TDDV2User
+	for _, userid := range dingResp.List {
+		info, err := Self.GetV2UserInfo(userid)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, info)
+	}
+	return users, nil
+}
+
 // GetUserInfo 根据 UserID 获取用户信息
 // https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
 func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {

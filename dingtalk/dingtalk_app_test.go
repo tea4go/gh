@@ -101,7 +101,7 @@ func TestGetDeptUsers(t *testing.T) {
 func TestGetV2UserInfoByPhone(t *testing.T) {
 	userinfo, err := app.GetV2UserInfoByPhone("13016985150")
 	if err != nil {
-		t.Fatalf("获取用户标识出错: %v", err)
+		t.Fatalf("获取用户出错: %v", err)
 	}
 	t.Logf("用户信息: %+v", userinfo)
 }
@@ -109,7 +109,18 @@ func TestGetV2UserInfoByPhone(t *testing.T) {
 func TestGetV2UserInfoByUnionId(t *testing.T) {
 	userinfo, err := app.GetV2UserInfoByUnionId("dxUDiP03drHsiE")
 	if err != nil {
-		t.Fatalf("获取用户标识出错: %v", err)
+		t.Fatalf("获取用户出错: %v", err)
 	}
 	t.Logf("用户信息: %+v", userinfo)
+}
+
+func TestGetV2UsersByName(t *testing.T) {
+	users, err := app.GetV2UsersByName("刘启")
+	if err != nil {
+		t.Fatalf("查询用户名出错: %v", err)
+	}
+	t.Logf("用户信息: %+v", users)
+	for _, v := range users {
+		t.Logf("%s - %s", v.UserId, v.StaffName)
+	}
 }
