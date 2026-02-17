@@ -107,7 +107,7 @@ func TestGetV2UserInfoByPhone(t *testing.T) {
 }
 
 func TestGetV2UserInfoByUnionId(t *testing.T) {
-	userid, err := app.GetV2UserInfoByUnionId("13016985150")
+	userid, err := app.GetV2UserInfoByUnionId("dxUDiP03drHsiE")
 	if err != nil {
 		t.Fatalf("获取用户标识出错: %v", err)
 	}
