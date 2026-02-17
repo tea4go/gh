@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	logs "github.com/tea4go/gh/log4go"
-	"gopkg.in/ffmt.v1"
 )
 
 var app *TDingTalkApp
@@ -29,12 +28,14 @@ func TestGetAccessToken(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
-	user, err := app.GetV2UserInfo("201")
-	if err != nil {
-		t.Fatalf("获取用户信息出错: %v", err)
+	for i := 0; i < 300; i++ {
+		_, err := app.GetV2UserInfo("201")
+		if err != nil {
+			t.Fatalf("获取用户信息出错: %v", err)
+		}
 	}
-	t.Logf("用户信息: %+v", user)
-	ffmt.Puts(user)
+	//	t.Logf("用户信息: %+v", user)
+	//	ffmt.Puts(user)
 }
 
 func TestGetV2Department(t *testing.T) {
@@ -116,7 +117,7 @@ func TestGetV2UserInfoByUnionId(t *testing.T) {
 }
 
 func TestGetV2UsersByName(t *testing.T) {
-	users, err := app.GetV2UsersByName("刘林")
+	users, err := app.GetV2UsersByName("刘")
 	if err != nil {
 		t.Fatalf("查询用户名出错: %v", err)
 	}
