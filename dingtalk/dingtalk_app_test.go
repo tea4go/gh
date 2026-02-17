@@ -103,6 +103,7 @@ func TestGetV2UserInfoByPhone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("获取用户出错: %v", err)
 	}
+
 	t.Logf("用户信息: %+v", userinfo)
 }
 
@@ -123,4 +124,5 @@ func TestGetV2UsersByName(t *testing.T) {
 	for _, v := range users {
 		t.Logf("[%s] %s - %s(%s/%s)", v.UserId, v.StaffCode, v.StaffName, v.Attrs.Org, v.Attrs.Job)
 	}
+	t.Logf("总共查找 %d 用户", len(users))
 }

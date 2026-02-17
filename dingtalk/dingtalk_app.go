@@ -322,7 +322,7 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	}
 	reqData.QueryWord = name
 	reqData.Offset = 0
-	reqData.Size = 100
+	reqData.Size = 200
 	var dingResp struct {
 		ErrCode    string   `json:"code"`
 		ErrMsg     string   `json:"message"`
@@ -330,25 +330,30 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 		TotalCount int      `json:"totalCount"`
 		List       []string `json:"list"`
 	}
-	state_code, _, output, err := network.HttpRequestBHB("POST", ddurl, false, reqData, header, &dingResp)
-	if state_code == 0 && err != nil {
-		return nil, err
-	}
-	if state_code == 200 {
-		logs.Debug("查询 %s 有 %d 个用户", name, dingResp.TotalCount)
-		var users []*TDDV2User
-		for _, userid := range dingResp.List {
-			info, err := Self.GetV2UserInfo(userid)
-			if err != nil {
-				return nil, err
-			}
-			users = append(users, info)
+	var users []*TDDV2User
+	for {
+		state_code, _, _, err := network.HttpRequestBHB("POST", ddurl, false, reqData, header, &dingResp)
+		if state_code == 0 && err != nil {
+			return nil, err
 		}
-		return users, nil
-	} else {
-		fmt.Println(state_code, string(output))
-		return nil, errors.New(dingResp.ErrMsg)
+		if state_code == 200 {
+			logs.Debug("查询 %s 有 %d 个用户", name, dingResp.TotalCount)
+			for _, userid := range dingResp.List {
+				info, err := Self.GetV2UserInfo(userid)
+				if err != nil {
+					return nil, err
+				}
+				users = append(users, info)
+			}
+			if !dingResp.HasMore {
+				break
+			}
+			reqData.Offset += reqData.Size
+		} else {
+			return nil, errors.New(dingResp.ErrMsg)
+		}
 	}
+	return users, nil
 }
 
 // GetUserInfo 根据 UserID 获取用户信息
@@ -363,14 +368,14 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
-	logs.Debug("访问接口：%s (获取用户详情)", ddurl)
+	//logs.Debug("访问接口：%s (获取用户详情)", ddurl)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
 	if err != nil {
 		return nil, err
 	}
-	logs.Debug("返回数据：%s", string(dingResp.Result))
+	//logs.Debug("返回数据：%s", string(dingResp.Result))
 
 	switch dingResp.ErrCode {
 	case 0:
