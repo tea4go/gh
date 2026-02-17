@@ -8,8 +8,14 @@ import (
 //钉钉发消息（群）
 
 type TResult struct {
-	ErrCode int    `json:"errcode"`
-	ErrMsg  string `json:"errmsg"`
+	ErrCode int    `json:"errcode,omitempty"`
+	ErrMsg  string `json:"errmsg,omitempty"`
+}
+
+type TDingTalkResponse struct {
+	ErrCode int             `json:"errcode"`
+	ErrMsg  string          `json:"errmsg"`
+	Result  json.RawMessage `json:"result"`
 }
 
 type MessageTextSub struct {
@@ -53,7 +59,7 @@ func (Self *MessageMarkdown) String() string {
 	return string(out.Bytes())
 }
 
-//用户信息
+// 用户信息
 type TReSnsUser struct {
 	TResult
 	UserInfo struct {

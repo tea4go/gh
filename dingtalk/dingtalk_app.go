@@ -58,11 +58,12 @@ func (Self *workNotify) String() string {
 
 type TDeptInfo struct {
 	TResult
-	Id      int    `json:"id"`
-	PId     int    `json:"parentid"`
-	Name    string `json:"name"`
-	MUserId string `json:"deptManagerUseridList"` //部门的主管列表，取值为由主管的userid组成的字符串，不同的userid使用“\|”符号进行分割
-	IsSub   bool   `json:"groupContainSubDept"`   //部门群是否包含子部门
+	Id          int      `json:"dept_id"`
+	PId         int      `json:"parent_id"`
+	Name        string   `json:"name"`
+	MemberCount int      `json:"member_count"`
+	MUserIds    []string `json:"dept_manager_userid_list"` //部门的主管列表，取值为由主管的userid组成的字符串，不同的userid使用“\|”符号进行分割
+	OwnerUserId string   `json:"org_dept_owner"`           //企业群群主
 }
 
 // String 转换为字符串
@@ -111,6 +112,33 @@ type TDDUser struct {
 	Remark    string      `json:"remark"`
 	Avatar    string      `json:"avatar"`
 	Attrs     TDDUserAttr `json:"extattr"`
+}
+
+type TDDV2User struct {
+	UserId    string `json:"userid"`
+	StaffCode string `json:"job_number"`
+	StaffName string `json:"name"`
+	Email     string `json:"email"`
+	Phone     string `json:"mobile"`
+	Remark    string `json:"remark"`
+	Avatar    string `json:"avatar"`
+	Attrs     TDDV2UserAttr
+	AttrText  string `json:"extension,omitempty"`
+}
+
+type TDDV2UserAttr struct {
+	JoinDate  string `json:"joinDate"`
+	Gender    string `json:"gender"`
+	BirthDate string `json:"birthDate"`
+	Age       string `json:"age"`
+	Station   string `json:"station"`
+	Belong    string `json:"belong"`
+	Org       string `json:"org"`
+	Dept      string `json:"dept"`
+	Job       string `json:"job"`
+	OrgId     string `json:"orgId"`
+	DeptId    string `json:"dept_id"`
+	JobId     string `json:"jobId"`
 }
 
 type TDDUserAttr struct {
@@ -202,6 +230,43 @@ func (Self *TDingTalkApp) GetAdmins() (*TAdmins, error) {
 
 // GetUserInfoByPhone 根据手机号获取用户信息
 // https://oapi.dingtalk.com/user/get_by_mobile?access_token=ACCESS_TOKEN&mobile=1xxxxxxxxxx
+func (Self *TDingTalkApp) GetV2UserInfoByPhone(phone string) (string, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return "", err
+	}
+
+	ddurl := Self.ddurl + "/topapi/v2/user/getbymobile"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("mobile", phone)
+	logs.Debug("访问接口：%s (获取用户标识)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return "", err
+	}
+
+	switch dingResp.ErrCode {
+	case 0:
+		logs.Debug("返回数据：%s", string(dingResp.Result))
+		var info TDDV2User
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return "", err
+		}
+		return info.UserId, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2UserInfoByPhone(phone)
+	default:
+		return "", errors.New(dingResp.ErrMsg)
+	}
+}
+
+// GetUserInfoByPhone 根据手机号获取用户信息
+// https://oapi.dingtalk.com/user/get_by_mobile?access_token=ACCESS_TOKEN&mobile=1xxxxxxxxxx
 func (Self *TDingTalkApp) GetUserInfoByPhone(phone string) (string, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
@@ -226,6 +291,44 @@ func (Self *TDingTalkApp) GetUserInfoByPhone(phone string) (string, error) {
 	} else {
 		return "", errors.New(info.ErrMsg)
 	}
+}
+
+// GetUserInfoByUnionId 根据 UnionId 获取用户信息
+// https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
+func (Self *TDingTalkApp) GetV2UserInfoByUnionId(unionid string) (*TDDUser, error) {
+	logs.Debug("GetUserInfoByUnionId() : 获取钉钉用户信息")
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	req := network.HttpGet(Self.ddurl+"/user/getUseridByUnionid?").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("unionid", unionid)
+
+	body_text, err := req.String()
+	if err != nil {
+		return nil, fmt.Errorf("发送请求失败，原因：%s", err.Error())
+	} //{"errcode":0,"errmsg":"ok","contactType":0,"userid":"333"}
+
+	info := struct {
+		TResult
+		ContactType int    `json:"contactType"`
+		UserId      string `json:"userid"`
+	}{}
+	err = req.ToJSON(&info)
+	if err != nil {
+		return nil, fmt.Errorf("序列化接收消息失败，内容：%s，原因：%s", body_text, err.Error())
+	}
+
+	if info.ErrCode == 42001 {
+		Self.token = nil
+		return Self.GetUserInfoByUnionId(unionid)
+	} else if info.ErrCode != 0 {
+		return nil, errors.New(info.ErrMsg)
+	}
+
+	return Self.GetUserInfo(info.UserId)
 }
 
 // GetUserInfoByUnionId 根据 UnionId 获取用户信息
@@ -274,16 +377,18 @@ func (Self *TDingTalkApp) GetUserInfo(userid string) (*TDDUser, error) {
 		return nil, err
 	}
 
-	//首先通过免authcode登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/user/get").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	ddurl := Self.ddurl + "/user/get"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
+	logs.Debug("访问接口：%s (获取用户详情)", ddurl)
 
 	var info TDDUser
 	err = req.ToJSON(&info)
 	if err != nil {
 		return nil, errors.New("获取钉钉用户信息失败！")
 	}
+
 	if info.ErrCode == 0 {
 		return &info, nil
 	} else if info.ErrCode == 503 {
@@ -294,58 +399,118 @@ func (Self *TDingTalkApp) GetUserInfo(userid string) (*TDDUser, error) {
 	}
 }
 
-// GetDepartment 获取部门详情
-// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
-func (Self *TDingTalkApp) GetDepartment(depid int) (*TDeptInfo, error) {
+// GetUserInfo 根据 UserID 获取用户信息
+// https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
+func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
-	//首先通过免authcode登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/topapi/v2/department/get").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	ddurl := Self.ddurl + "/topapi/v2/user/get"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
-	req.Param("dept_id", strconv.Itoa(depid))
+	req.Param("userid", userid)
+	logs.Debug("访问接口：%s (获取用户详情)", ddurl)
 
-	var info TDeptInfo
-	err = req.ToJSON(&info)
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
 	if err != nil {
 		return nil, err
 	}
-	if info.ErrCode == 0 {
+	logs.Debug("返回数据：%s", string(dingResp.Result))
+
+	switch dingResp.ErrCode {
+	case 0:
+		var info TDDV2User
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		if info.AttrText != "" {
+			err = json.Unmarshal([]byte(info.AttrText), &info.Attrs)
+			if err != nil {
+				return nil, err
+			}
+		}
+		info.AttrText = ""
 		return &info, nil
-	} else if info.ErrCode == 503 {
+	case 503:
 		Self.token = nil
-		return Self.GetDepartment(depid)
-	} else {
-		return nil, errors.New(info.ErrMsg)
+		return Self.GetV2UserInfo(userid)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
+// GetDepartment 获取部门详情
+// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+func (Self *TDingTalkApp) GetV2Department(depid int) (*TDeptInfo, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	ddurl := Self.ddurl + "/topapi/v2/department/get"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("dept_id", strconv.Itoa(depid))
+	logs.Debug("访问接口：%s (获取部门详情)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	switch dingResp.ErrCode {
+	case 0:
+		logs.Debug("返回数据：%s", string(dingResp.Result))
+		var info TDeptInfo
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		return &info, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2Department(depid)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
 	}
 }
 
 // 获取部门详情
-func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
+func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDV2User, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
 		return nil, err
 	}
-
-	req := network.HttpGet(Self.ddurl+"/topapi/user/listid").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	ddurl := Self.ddurl + "/topapi/user/listid"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(depid))
+	logs.Debug("访问接口：%s (获取部门用户)", ddurl)
 
-	info := struct {
-		TResult
-		UserIDList []string `json:"userid_list"`
-	}{}
-	err = req.ToJSON(&info)
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
 	if err != nil {
 		return nil, err
 	}
-	if info.ErrCode == 0 {
-		fmt.Printf("userid_list: %v\n", info.UserIDList)
-		var users []*TDDUser
+
+	switch dingResp.ErrCode {
+	case 0:
+		// 获取员工列表
+		var info struct {
+			UserIDList []string `json:"userid_list"`
+		}
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+
+		var users []*TDDV2User
 		for _, v := range info.UserIDList {
-			user, err := Self.GetUserInfo(v)
+			user, err := Self.GetV2UserInfo(v)
 			if err != nil {
 				return nil, err
 			} else {
@@ -353,11 +518,11 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
 			}
 		}
 		return users, nil
-	} else if info.ErrCode == 503 {
+	case 503:
 		Self.token = nil
 		return Self.GetDeptUsers(depid)
-	} else {
-		return nil, errors.New(info.ErrMsg)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
 	}
 }
 
@@ -365,7 +530,7 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
 func (Self *TDingTalkApp) GetOrgName(userid string) (string, error) {
 	logs.Debug("GetOrgName() : 获取钉钉部门信息")
 
-	info, err := Self.GetUserInfo(userid)
+	info, err := Self.GetV2UserInfo(userid)
 	if err != nil {
 		return "", err
 	}
@@ -377,7 +542,7 @@ func (Self *TDingTalkApp) GetOrgName(userid string) (string, error) {
 func (Self *TDingTalkApp) GetJobName(userid string) (string, error) {
 	logs.Debug("GetJobName() : 获取钉钉岗位信息")
 
-	info, err := Self.GetUserInfo(userid)
+	info, err := Self.GetV2UserInfo(userid)
 	if err != nil {
 		return "", err
 	}
@@ -386,7 +551,7 @@ func (Self *TDingTalkApp) GetJobName(userid string) (string, error) {
 
 // GetFullDepartmentName 获取完整部门名称
 func (Self *TDingTalkApp) GetFullDeptName(depid int) (string, error) {
-	info, err := Self.GetDepartment(depid)
+	info, err := Self.GetV2Department(depid)
 	if err != nil {
 		return "", err
 	} else {
@@ -404,34 +569,43 @@ func (Self *TDingTalkApp) GetFullDeptName(depid int) (string, error) {
 
 // GetLoginInfo 获取登录信息
 // https://oapi.dingtalk.com/user/getuserinfo?access_token=access_token&code=code
-func (Self *TDingTalkApp) GetLoginInfo(authcode string) (string, error) {
+func (Self *TDingTalkApp) GetV2LoginInfo(authcode string) (string, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
 		return "", err
 	}
 
 	//首先通过authcode免登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/user/getuserinfo").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	ddurl := Self.ddurl + "/topapi/v2/user/getuserinfo"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("code", authcode)
+	logs.Debug("访问接口：%s (获取登录用户信息)", ddurl)
 
-	var info struct {
-		ErrCode int    `json:"errcode"`
-		ErrMsg  string `json:"errmsg"`
-		UserId  string `json:"userid"`
-	}
-	err = req.ToJSON(&info)
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
 	if err != nil {
 		return "", err
 	}
-
-	if info.ErrCode == 0 {
+	switch dingResp.ErrCode {
+	case 0:
+		logs.Debug("返回数据：%s", string(dingResp.Result))
+		var info struct {
+			UserId   string `json:"userid"`
+			DeviceID string `json:"deviceid"`
+			Name     string `json:"name"`
+		}
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return "", err
+		}
+		logs.Debug("当前登录信息：%s - %s(%s)", info.DeviceID, info.Name, info.UserId)
 		return info.UserId, nil
-	} else if info.ErrCode == 503 {
+	case 503:
 		Self.token = nil
-		return Self.GetLoginInfo(authcode)
-	} else {
-		return "", errors.New(info.ErrMsg)
+		return Self.GetV2LoginInfo(authcode)
+	default:
+		return "", errors.New(dingResp.ErrMsg)
 	}
 }
 
@@ -441,12 +615,13 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 	if err != nil {
 		return -1, err
 	}
-
-	req := network.HttpPost(Self.ddurl+"/topapi/message/corpconversation/asyncsend_v2").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	ddurl := Self.ddurl + "/topapi/message/corpconversation/asyncsend_v2"
+	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("agent_id", Self.agent_id)
 	req.Param("userid_list", user_id)
 	req.Param("msg", msg_text)
+	logs.Debug("访问接口：%s (发送工作通知)", ddurl)
 
 	body_text, err := req.String()
 	if err != nil {
@@ -458,13 +633,14 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 	if err != nil {
 		return -1, fmt.Errorf("发送钉钉工作通知消息失败，内容：%s，原因：%s", body_text, err.Error())
 	}
-	if info.ErrCode == 0 {
+	switch info.ErrCode {
+	case 0:
 		logs.Debug("SendWorkNotify() : 发送钉钉工作通知消息成功(%d)", info.TaskId)
 		return info.TaskId, nil
-	} else if info.ErrCode == 503 {
+	case 503:
 		Self.token = nil
 		return Self.SendWorkNotify(user_id, msg_text)
-	} else {
+	default:
 		return -1, errors.New(info.ErrMsg)
 	}
 }
@@ -494,7 +670,7 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 		//logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... OK (%s)", info.AccessToken)
 		return info.AccessToken, nil
 	} else {
-		logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... Not OK %s(%d)", info.ErrMsg, info.ErrCode)
+		logs.Debug("GetAccessToken() : 获取钉钉Token信息失败，%s(%d)", info.ErrMsg, info.ErrCode)
 		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode)
 	}
 }
