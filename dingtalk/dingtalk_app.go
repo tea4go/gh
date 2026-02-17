@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	logs "github.com/tea4go/gh/log4go"
@@ -304,9 +303,9 @@ func (Self *TDingTalkApp) GetDepartment(depid int) (*TDeptInfo, error) {
 	}
 
 	//首先通过免authcode登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/department/get").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := network.HttpGet(Self.ddurl+"/topapi/v2/department/get").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
-	req.Param("id", strconv.Itoa(depid))
+	req.Param("dept_id", strconv.Itoa(depid))
 
 	var info TDeptInfo
 	err = req.ToJSON(&info)
@@ -330,8 +329,7 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
 		return nil, err
 	}
 
-	//首先通过免authcode登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/user/listid").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := network.HttpGet(Self.ddurl+"/topapi/user/listid").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(depid))
 
@@ -344,6 +342,7 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
 		return nil, err
 	}
 	if info.ErrCode == 0 {
+		fmt.Printf("userid_list: %v\n", info.UserIDList)
 		var users []*TDDUser
 		for _, v := range info.UserIDList {
 			user, err := Self.GetUserInfo(v)
@@ -363,61 +362,42 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDUser, error) {
 }
 
 // GetOrgName 获取组织名称
-func (Self *TDingTalkApp) GetOrgName(depids []int) (string, error) {
-	logs.Debug("GetJobName() : 获取钉钉部门信息")
-	var name string
-	for _, v := range depids {
-		dep, err := Self.GetDepartment(v)
-		if err != nil {
-			return "", err
-		} else {
-			if strings.Contains(dep.Name, "HRBP") {
-				if name == "" {
-					name = dep.Name
-				} else {
-					name = name + "|" + dep.Name
-				}
-			}
-		}
+func (Self *TDingTalkApp) GetOrgName(userid string) (string, error) {
+	logs.Debug("GetOrgName() : 获取钉钉部门信息")
+
+	info, err := Self.GetUserInfo(userid)
+	if err != nil {
+		return "", err
 	}
-	return name, nil
+
+	return info.Attrs.Org, nil
 }
 
 // GetJobName 获取职位名称
-func (Self *TDingTalkApp) GetJobName(depids []int) (string, error) {
+func (Self *TDingTalkApp) GetJobName(userid string) (string, error) {
 	logs.Debug("GetJobName() : 获取钉钉岗位信息")
-	var name string
-	for _, v := range depids {
-		dep, err := Self.GetDepartment(v)
-		if err != nil {
-			return "", err
-		} else {
-			if !strings.Contains(dep.Name, "HRBP") && !strings.Contains(dep.Name, "考勤") {
-				if name == "" {
-					name = dep.Name
-				} else {
-					name = name + "|" + dep.Name
-				}
-			}
-		}
+
+	info, err := Self.GetUserInfo(userid)
+	if err != nil {
+		return "", err
 	}
-	return name, nil
+	return info.Attrs.Job, nil
 }
 
 // GetFullDepartmentName 获取完整部门名称
-func (Self *TDingTalkApp) GetFullDepartmentName(depid int) (string, error) {
+func (Self *TDingTalkApp) GetFullDeptName(depid int) (string, error) {
 	info, err := Self.GetDepartment(depid)
 	if err != nil {
 		return "", err
 	} else {
 		if info.PId > 0 {
-			name, err := Self.GetFullDepartmentName(info.PId)
+			name, err := Self.GetFullDeptName(info.PId)
 			if err != nil {
 				return "", err
 			}
 			return name + "/" + info.Name, nil
 		} else {
-			return "/", nil
+			return "", nil
 		}
 	}
 }
@@ -444,6 +424,7 @@ func (Self *TDingTalkApp) GetLoginInfo(authcode string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if info.ErrCode == 0 {
 		return info.UserId, nil
 	} else if info.ErrCode == 503 {
