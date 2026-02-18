@@ -129,9 +129,25 @@ func TestGetV2UsersByName(t *testing.T) {
 }
 
 func TestGetV2ReportList(t *testing.T) {
-	_, err := app.GetV2ReportList("201", "2026-01-01", "2026-02-19")
+	reportList, err := app.GetV2ReportList("1795", "2025-01-01", "2026-02-19")
 	if err != nil {
 		t.Fatalf("查询用户名出错: %v", err)
 	}
 
+	reportText := reportList.GetReportText("")
+	if reportText == "" {
+		t.Fatalf("获取报告内容出错")
+	}
+	t.Logf("报告内容: \n%s", reportText)
+}
+
+func TestGetV2ReportSimpleList(t *testing.T) {
+	reportList, err := app.GetV2ReportSimpleList("1795", "2026-01-01", "2026-02-19")
+	if err != nil {
+		t.Fatalf("查询用户名出错: %v", err)
+	}
+
+	for _, v := range reportList {
+		t.Logf(v.ToString() + " -> " + v.ReportID + "\n")
+	}
 }

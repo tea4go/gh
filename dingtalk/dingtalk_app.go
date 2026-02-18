@@ -174,6 +174,80 @@ func (Self *TDDUser) DisplayName() string {
 	}
 }
 
+type TDDReportSimpleItem struct {
+	CreateTime   int64  `json:"create_time"`
+	CreatorID    string `json:"creator_id"`
+	CreatorName  string `json:"creator_name"`
+	DeptName     string `json:"dept_name"`
+	Remark       string `json:"remark"`
+	ReportID     string `json:"report_id"`
+	TemplateName string `json:"template_name"`
+}
+
+func (Self *TDDReportSimpleItem) ToString() string {
+	CreateTimeStr := time.Unix(Self.CreateTime/1000, 0).Format("2006-01-02 15:04")
+	return fmt.Sprintf("%s的%s (%s)", Self.CreatorName, Self.TemplateName, CreateTimeStr)
+}
+
+type TDDReportSimpleList struct {
+	DataList   []TDDReportSimpleItem `json:"data_list"`
+	HasMore    bool                  `json:"has_more"`
+	NextCursor int64                 `json:"next_cursor"`
+	Size       int                   `json:"size"`
+}
+
+type TDDReportList struct {
+	DataList   []TDDReportItem `json:"data_list"`
+	HasMore    bool            `json:"has_more"`
+	NextCursor int64           `json:"next_cursor"`
+	Size       int             `json:"size"`
+}
+
+func (Self *TDDReportList) GetReportText(ReportID string) string {
+	var out string
+	for _, v := range Self.DataList {
+		if ReportID == "" || v.ReportID == ReportID {
+			out = out + v.ToString() + "\n"
+			for _, c := range v.Contents {
+				if c.Type == "1" {
+					out = out + c.ToString() + "\n"
+				}
+			}
+		}
+		out = out + "\n"
+	}
+	return out
+}
+
+type TDDReportItem struct {
+	Contents     []TDDReportContent `json:"contents"`
+	CreateTime   int64              `json:"create_time"`
+	CreatorID    string             `json:"creator_id"`
+	CreatorName  string             `json:"creator_name"`
+	DeptName     string             `json:"dept_name"`
+	Images       []string           `json:"images"`
+	ModifiedTime int64              `json:"modified_time"`
+	Remark       string             `json:"remark"`
+	ReportID     string             `json:"report_id"`
+	TemplateName string             `json:"template_name"`
+}
+
+func (Self *TDDReportItem) ToString() string {
+	ModifiedTimeStr := time.Unix(Self.ModifiedTime/1000, 0).Format("2006-01-02 15:04")
+	return fmt.Sprintf("# %s的%s (%s)", Self.CreatorName, Self.TemplateName, ModifiedTimeStr)
+}
+
+type TDDReportContent struct {
+	Key   string `json:"key"`
+	Sort  string `json:"sort"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+func (Self *TDDReportContent) ToString() string {
+	return fmt.Sprintf("## %s\r\n%s", Self.Key, Self.Value)
+}
+
 type TDingTalkApp struct {
 	ddurl             string
 	appkey            string
@@ -640,9 +714,9 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 	}
 }
 
-// GetV2ReportList 获取用户在指定时间范围内的工作报告列表
+// GetV2ReportList 获取用户在指定时间范围内的日志列表
 // https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
-func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDeptInfo, error) {
+func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDDReportList, error) {
 	// 处理时间格式
 	layout := "2006-01-02"
 	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
@@ -655,6 +729,9 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 		return nil, err
 	}
 	endTimeText := fmt.Sprintf("%d", endTime.UnixMilli())
+	if endTime.UnixMilli()-startTime.UnixMilli() > int64(180*24*60*60*1000) {
+		return nil, fmt.Errorf("查询时间跨度不能超过180天")
+	}
 
 	_, err = Self.GetAccessToken()
 	if err != nil {
@@ -667,8 +744,8 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	req.Param("start_time", startTimeText)
 	req.Param("end_time", endTimeText)
 	req.Param("cursor", "0")
-	req.Param("size", "100")
-	logs.Debug("访问接口：%s (获取用户在指定时间范围内的工作报告列表)", ddurl)
+	req.Param("size", "200")
+	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志列表)", ddurl)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -677,11 +754,71 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	}
 	switch dingResp.ErrCode {
 	case 0:
-		logs.Debug("返回数据：%s", string(dingResp.Result))
-		return nil, nil
+		var info TDDReportList
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		logs.Debug("返回数据：%d 个日志", len(info.DataList))
+		return &info, nil
 	case 503:
 		Self.token = nil
 		return Self.GetV2ReportList(userid, start_time, end_time)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
+// GetV2ReportList 获取用户在指定时间范围内的日志概要列表
+// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time string) ([]TDDReportSimpleItem, error) {
+	// 处理时间格式
+	layout := "2006-01-02"
+	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	startTimeText := fmt.Sprintf("%d", startTime.UnixMilli())
+	endTime, err := time.ParseInLocation(layout, end_time, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	endTimeText := fmt.Sprintf("%d", endTime.UnixMilli())
+	if endTime.UnixMilli()-startTime.UnixMilli() > int64(180*24*60*60*1000) {
+		return nil, fmt.Errorf("查询时间跨度不能超过180天")
+	}
+
+	_, err = Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	ddurl := Self.ddurl + "/topapi/report/simplelist"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("userid", userid)
+	req.Param("start_time", startTimeText)
+	req.Param("end_time", endTimeText)
+	req.Param("cursor", "0")
+	req.Param("size", "200")
+	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志概要列表)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	switch dingResp.ErrCode {
+	case 0:
+		var info TDDReportSimpleList
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		logs.Debug("返回数据：%d 个日志概要", len(info.DataList))
+		return info.DataList, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2ReportSimpleList(userid, start_time, end_time)
 	default:
 		return nil, errors.New(dingResp.ErrMsg)
 	}
