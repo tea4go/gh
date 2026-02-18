@@ -639,3 +639,50 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode)
 	}
 }
+
+// GetV2ReportList 获取用户在指定时间范围内的工作报告列表
+// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDeptInfo, error) {
+	// 处理时间格式
+	layout := "2006-01-02"
+	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	startTimeText := fmt.Sprintf("%d", startTime.UnixMilli())
+	endTime, err := time.ParseInLocation(layout, end_time, time.Local)
+	if err != nil {
+		return nil, err
+	}
+	endTimeText := fmt.Sprintf("%d", endTime.UnixMilli())
+
+	_, err = Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	ddurl := Self.ddurl + "/topapi/report/list"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("userid", userid)
+	req.Param("start_time", startTimeText)
+	req.Param("end_time", endTimeText)
+	req.Param("cursor", "0")
+	req.Param("size", "100")
+	logs.Debug("访问接口：%s (获取用户在指定时间范围内的工作报告列表)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	switch dingResp.ErrCode {
+	case 0:
+		logs.Debug("返回数据：%s", string(dingResp.Result))
+		return nil, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2ReportList(userid, start_time, end_time)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}

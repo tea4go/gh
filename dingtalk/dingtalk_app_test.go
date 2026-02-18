@@ -127,3 +127,11 @@ func TestGetV2UsersByName(t *testing.T) {
 	}
 	t.Logf("总共查找 %d 用户", len(users))
 }
+
+func TestGetV2ReportList(t *testing.T) {
+	_, err := app.GetV2ReportList("201", "2026-01-01", "2026-02-19")
+	if err != nil {
+		t.Fatalf("查询用户名出错: %v", err)
+	}
+
+}
