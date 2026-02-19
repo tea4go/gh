@@ -221,6 +221,15 @@ func (Self *TDDReportList) GetReportText(ReportID string) string {
 	return out
 }
 
+type TDDReportTemplateItem struct {
+	Name       string `json:"name"`
+	ReportCode string `json:"report_code"`
+}
+type TDDReportTemplateList struct {
+	TemplateList []TDDReportTemplateItem `json:"template_list"`
+	NextCursor   int64                   `json:"next_cursor"`
+}
+
 type TDDReportItem struct {
 	Contents     []TDDReportContent `json:"contents"`
 	CreateTime   int64              `json:"create_time"`
@@ -735,6 +744,43 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 	}
 }
 
+// GetV2ReportTemplateList 获取用户可见的日志模板列表
+// https://oapi.dingtalk.com/topapi/report/template/listbyuserid?access_token=ACCESS_TOKEN&userid=userid&cursor=cursor&size=size
+func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTemplateItem, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	ddurl := Self.ddurl + "/topapi/report/template/listbyuserid"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("userid", userid)
+	req.Param("cursor", "0")
+	req.Param("size", "100")
+	logs.Debug("访问接口：%s (获取用户可见的日志模板)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	switch dingResp.ErrCode {
+	case 0:
+		var info TDDReportTemplateList
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		logs.Debug("返回数据：%d 个日志模板", len(info.TemplateList))
+		return info.TemplateList, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2ReportTemplateList(userid)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
 // GetV2ReportList 获取用户在指定时间范围内的日志列表
 // https://oapi.dingtalk.com/topapi/v2/report/list?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDDReportList, error) {
@@ -847,10 +893,10 @@ func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time str
 
 // CreateV2Report 创建用户日志
 // https://oapi.dingtalk.com/topapi/v2/report/create?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
-func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text, b_text string) ([]TDDReportSimpleItem, error) {
+func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text, b_text string) (string, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	ddurl := Self.ddurl + "/topapi/report/create?access_token=" + Self.token.AccessToken
@@ -873,22 +919,27 @@ func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text
 	reportParam.ToUserIDs = strings.Split(to_userids, ",")
 	reportParam.ToChat = false
 	reportParam.DDFrom = "report"
-	var dingResp TDingTalkResponse
+	var dingResp struct {
+		ErrCode   int    `json:"errcode"`
+		ErrMsg    string `json:"errmsg"`
+		Result    string `json:"result"`
+		RequestID string `json:"request_id"`
+	}
 	reqData := make(map[string]any)
 	reqData["create_report_param"] = reportParam
 	reqDataJson := utils.GetJson(reqData)
-	state_code, _, outtext, err := network.HttpRequestBB("POST", ddurl, false, reqDataJson, &dingResp)
+	state_code, _, _, err := network.HttpRequestBB("POST", ddurl, false, reqDataJson, &dingResp)
 	if state_code == 0 && err != nil {
-		return nil, err
+		return "", err
 	}
-	fmt.Println(string(outtext))
+
 	switch dingResp.ErrCode {
 	case 0:
-		return nil, nil
+		return string(dingResp.Result), nil
 	case 503:
 		Self.token = nil
 		return Self.CreateV2Report(userid, template_id, to_userids, a_text, b_text)
 	default:
-		return nil, errors.New(dingResp.ErrMsg + ",RequestID: " + dingResp.RequestID)
+		return "", errors.New(dingResp.ErrMsg + ",RequestID: " + dingResp.RequestID)
 	}
 }

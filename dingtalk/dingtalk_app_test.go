@@ -153,6 +153,17 @@ func TestGetV2ReportSimpleList(t *testing.T) {
 	}
 }
 
+func TestGetV2ReportTemplateList(t *testing.T) {
+	reportList, err := app.GetV2ReportTemplateList("201")
+	if err != nil {
+		t.Fatalf("查询用户日志模板出错: %v", err)
+	}
+
+	for _, v := range reportList {
+		t.Logf(v.Name + " -> " + v.ReportCode + "\n")
+	}
+}
+
 func TestCreateV2Report(t *testing.T) {
 	a_text := `售前项目
 1）商机支撑
@@ -198,9 +209,10 @@ func TestCreateV2Report(t *testing.T) {
 	// }
 	// a_text = string(a_text_bytes)
 
-	_, err := app.CreateV2Report("201", "1704cf092b3a4bab513974f44c6b53d6", "201", a_text, b_text)
+	report_id, err := app.CreateV2Report("201", "1704cf092b3a4bab513974f44c6b53d6", "201", a_text, b_text)
 	if err != nil {
 		t.Fatalf("创建用户日志出错: %v", err)
 	}
+	t.Logf("report_id = %s\n", report_id)
 
 }
