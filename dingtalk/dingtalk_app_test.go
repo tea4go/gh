@@ -160,7 +160,7 @@ func TestGetV2ReportTemplateList(t *testing.T) {
 	}
 
 	for _, v := range reportList {
-		t.Logf(v.Name + " -> " + v.ReportCode + "\n")
+		t.Logf(v.ReportCode + " -> " + v.Name + "\n")
 	}
 }
 
