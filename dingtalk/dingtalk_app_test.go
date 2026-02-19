@@ -11,6 +11,7 @@ import (
 var app *TDingTalkApp
 
 func TestMain(m *testing.M) {
+	logs.SetFDebug(false)
 	logs.SetLogger("console", `{"color":true,"level":7}`)
 	clientID := os.Getenv("DINGTALK_Client_ID")
 	clientSecret := os.Getenv("DINGTALK_Client_Secret")
@@ -129,9 +130,9 @@ func TestGetV2UsersByName(t *testing.T) {
 }
 
 func TestGetV2ReportList(t *testing.T) {
-	reportList, err := app.GetV2ReportList("1795", "2025-01-01", "2026-02-19")
+	reportList, err := app.GetV2ReportList("201", "2026-02-19", "2026-03-19")
 	if err != nil {
-		t.Fatalf("查询用户名出错: %v", err)
+		t.Fatalf("查询用户日志出错: %v", err)
 	}
 
 	reportText := reportList.GetReportText("")
@@ -144,10 +145,62 @@ func TestGetV2ReportList(t *testing.T) {
 func TestGetV2ReportSimpleList(t *testing.T) {
 	reportList, err := app.GetV2ReportSimpleList("1795", "2026-01-01", "2026-02-19")
 	if err != nil {
-		t.Fatalf("查询用户名出错: %v", err)
+		t.Fatalf("查询用户日志摘要出错: %v", err)
 	}
 
 	for _, v := range reportList {
 		t.Logf(v.ToString() + " -> " + v.ReportID + "\n")
 	}
+}
+
+func TestCreateV2Report(t *testing.T) {
+	a_text := `售前项目
+1）商机支撑
+- a、新电New Core：正在售前评估阶段，已对Redhat官方发起环境适配性验证申请，其目前正在进行审批流程，通过后开展验证；
+- b、津巴布韦Ecoent AA项目：本周于2月2日完成割接上线，平台与GTSC保持高度响应持续保障；
+- c、印尼XL AI项目：本周于2月2日完成客户演示，客户反馈很满意，5月份完成版本开发工作；
+- d、荷兰KPN Spring升级：平台完成升级所需的安全治理工作，计划3月底之前完成ZCM/SGP发版。
+2）售前应标
+- a、Globe EAM RFP应标：平台参与应标启动会，初步评估约70%的定制开发量，投标截止为菲律宾时间2月24日。
+3）硬件配置与部署
+- a、硬件配置&amp;部署方
+案：内部进一步梳理标准SOP以及响应案例，后续会进一步保持内外拉通同步。
+4）方案培训
+- a、法电CRM项目：支撑商发完成Scalability能力演示；
+- b、格鲁Silknet AIOps：线上会议的形式给客户介绍Agent方案。
+5）竞品分析
+- a、启动AWS产品分析工作，正在分析AWS EKS用户指南与ZCM做产品特性之间的差异性对比，形成标准报告预计3月份完成。
+产品质量：
+- a、集成测试：推进产品自动化覆盖，容器云70%/监控75%/调用链70%/日志70%/zmq70%;其中AI自动化所有产品覆盖率16%
+- b、高可用测试：围绕K8S、mysql、redis、业务网关等平台高可用架构展开测试，容器云进展10%，监控、调用链、日志均进展5%
+- c、稳定性建设：本周实战故障演练100%触发告警，发现并修复监控产品influxdbutil获取bean顺序异常的稳定性隐患
+- d、AI测试：顺利完成印尼XL AI场景客户演示，
+受控到正式版本回归通过率10%;AI trace测试进展10%
+售后项目：
+- a、津巴布韦Econet项目2.1成功上线
+- b、新电AKS 1.29应用无法启动完成根因分析并提供解决方案
+- c、刚果布MTN项目2.8保障上线
+
+`
+	b_text := `- 1. Core94-Security 分支升级SpringBoot4.0
+- 2. 可观测2.0 大盘中心和自运维功能设计
+- 3. 调用链异常采样功能性能压测和内存调优
+- 4. 规范规划及发布计划拉通，推动ZMQ开发规范的发布
+- 5. 鉴于 Singtel 现场发现的问题，修订调用链、日志接入和运维规范，增加对 APM_INIT URL 的使用规范
+- 6. 面向项目发布技术通知单，排查License到期风险
+- 7. 各项目需求研发和交付
+- 8. 其他在途专题推进
+	`
+	// 读取文件内容
+	// a_text_bytes, err := ioutil.ReadFile(`C:\SyncData\云上笔记_20260124_100025\A-我的笔记\测试MD格式.md`)
+	// if err != nil {
+	// 	log.Fatalf("读取文件失败,%v", err)
+	// }
+	// a_text = string(a_text_bytes)
+
+	_, err := app.CreateV2Report("201", "1704cf092b3a4bab513974f44c6b53d6", "201", a_text, b_text)
+	if err != nil {
+		t.Fatalf("创建用户日志出错: %v", err)
+	}
+
 }

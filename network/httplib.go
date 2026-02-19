@@ -86,6 +86,7 @@ func GetHttpRemoteAddr(req *http.Request) string {
 		return addr
 	}
 }
+
 // GetHttpRemoteAddrPort 获取HTTP请求的客户端真实IP地址和端口
 func GetHttpRemoteAddrPort(req *http.Request) string {
 	addr := ""
@@ -804,6 +805,11 @@ func HttpRequestBC(method, url string, is_cookie bool, body interface{}, cookies
 // 单句调用Http请求(带Body，用户密码，有返回值)
 func HttpRequestBD(method, url string, is_cookie bool, body interface{}, username, password string, result interface{}) (int, *http.Response, []byte, error) {
 	return HttpRequest(method, url, is_cookie, nil, body, nil, nil, username, password, result)
+}
+
+// 单句调用Http请求(带Body，Header，有返回值)
+func HttpRequestPBHB(method, url string, is_cookie bool, params map[string]string, body interface{}, header map[string]string, result interface{}) (int, *http.Response, []byte, error) {
+	return HttpRequest(method, url, is_cookie, params, body, nil, header, "", "", result)
 }
 
 func HttpRequest(method, url string, is_cookie bool,

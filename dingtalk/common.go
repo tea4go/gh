@@ -13,9 +13,10 @@ type TResult struct {
 }
 
 type TDingTalkResponse struct {
-	ErrCode int             `json:"errcode"`
-	ErrMsg  string          `json:"errmsg"`
-	Result  json.RawMessage `json:"result"`
+	ErrCode   int             `json:"errcode"`
+	ErrMsg    string          `json:"errmsg"`
+	Result    json.RawMessage `json:"result"`
+	RequestID string          `json:"request_id"`
 }
 
 type MessageTextSub struct {

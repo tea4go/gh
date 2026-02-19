@@ -6,10 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/network"
+	"github.com/tea4go/gh/utils"
 )
 
 //钉钉小程序 助手类
@@ -248,6 +250,25 @@ func (Self *TDDReportContent) ToString() string {
 	return fmt.Sprintf("## %s\r\n%s", Self.Key, Self.Value)
 }
 
+// ReportContent 日志内容项
+type TDDCreateReportContent struct {
+	Key         string `json:"key"`          // 字段名称
+	Type        int    `json:"type"`         // 类型
+	Sort        int    `json:"sort"`         // 排序
+	ContentType string `json:"content_type"` // 内容类型（如：markdown）
+	Content     string `json:"content"`      // 内容
+}
+
+// CreateReportParam 创建日志参数
+type TDDCreateReportParam struct {
+	TemplateID string                   `json:"template_id"`       // 模板ID
+	Contents   []TDDCreateReportContent `json:"contents"`          // 日志内容列表
+	ToUserIDs  []string                 `json:"to_userids"`        // 接收人用户ID列表
+	ToChat     bool                     `json:"to_chat"`           // 是否发送到群聊
+	DDFrom     string                   `json:"dd_from,omitempty"` // 来源
+	UserID     string                   `json:"userid"`            // 创建人用户ID
+}
+
 type TDingTalkApp struct {
 	ddurl             string
 	appkey            string
@@ -340,7 +361,7 @@ func (Self *TDingTalkApp) GetV2UserInfoByPhone(phone string) (*TDDV2User, error)
 }
 
 // GetUserInfoByUnionId 根据 UnionId 获取用户信息
-// https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
+// https://oapi.dingtalk.com/topapi/user/getbyunionid?access_token=ACCESS_TOKEN&unionid=zhangsan
 func (Self *TDingTalkApp) GetV2UserInfoByUnionId(unionid string) (*TDDV2User, error) {
 	logs.Debug("GetUserInfoByUnionId() : 获取钉钉用户信息")
 	_, err := Self.GetAccessToken()
@@ -439,7 +460,7 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 }
 
 // GetUserInfo 根据 UserID 获取用户信息
-// https://oapi.dingtalk.com/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
+// https://oapi.dingtalk.com/topapi/v2/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
 func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
@@ -483,7 +504,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 }
 
 // GetDepartment 获取部门详情
-// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+// https://oapi.dingtalk.com/topapi/v2/department/get?access_token=ACCESS_TOKEN&dept_id=123
 func (Self *TDingTalkApp) GetV2Department(depid int) (*TDeptInfo, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
@@ -715,7 +736,7 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 }
 
 // GetV2ReportList 获取用户在指定时间范围内的日志列表
-// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+// https://oapi.dingtalk.com/topapi/v2/report/list?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDDReportList, error) {
 	// 处理时间格式
 	layout := "2006-01-02"
@@ -745,7 +766,7 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	req.Param("end_time", endTimeText)
 	req.Param("cursor", "0")
 	req.Param("size", "200")
-	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志列表)", ddurl)
+	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志列表) %s - %s", ddurl, startTimeText, endTimeText)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -769,8 +790,8 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	}
 }
 
-// GetV2ReportList 获取用户在指定时间范围内的日志概要列表
-// https://oapi.dingtalk.com/department/get?access_token=ACCESS_TOKEN&id=123
+// GetV2ReportSimpleList 获取用户在指定时间范围内的日志概要列表
+// https://oapi.dingtalk.com/topapi/v2/report/simplelist?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time string) ([]TDDReportSimpleItem, error) {
 	// 处理时间格式
 	layout := "2006-01-02"
@@ -821,5 +842,53 @@ func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time str
 		return Self.GetV2ReportSimpleList(userid, start_time, end_time)
 	default:
 		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
+// CreateV2Report 创建用户日志
+// https://oapi.dingtalk.com/topapi/v2/report/create?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
+func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text, b_text string) ([]TDDReportSimpleItem, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	ddurl := Self.ddurl + "/topapi/report/create?access_token=" + Self.token.AccessToken
+	logs.Debug("访问接口：%s (创建用户日志)", ddurl)
+	var contents [2]TDDCreateReportContent
+	contents[0].Key = "本周完成工作"
+	contents[0].Type = 1
+	contents[0].Sort = 2
+	contents[0].Content = a_text
+	contents[0].ContentType = "markdown"
+	contents[1].Key = "下周工作计划"
+	contents[1].Type = 1
+	contents[1].Sort = 6
+	contents[1].Content = b_text
+	contents[1].ContentType = "markdown"
+	var reportParam TDDCreateReportParam
+	reportParam.UserID = userid
+	reportParam.TemplateID = template_id
+	reportParam.Contents = contents[:]
+	reportParam.ToUserIDs = strings.Split(to_userids, ",")
+	reportParam.ToChat = false
+	reportParam.DDFrom = "report"
+	var dingResp TDingTalkResponse
+	reqData := make(map[string]any)
+	reqData["create_report_param"] = reportParam
+	reqDataJson := utils.GetJson(reqData)
+	state_code, _, outtext, err := network.HttpRequestBB("POST", ddurl, false, reqDataJson, &dingResp)
+	if state_code == 0 && err != nil {
+		return nil, err
+	}
+	fmt.Println(string(outtext))
+	switch dingResp.ErrCode {
+	case 0:
+		return nil, nil
+	case 503:
+		Self.token = nil
+		return Self.CreateV2Report(userid, template_id, to_userids, a_text, b_text)
+	default:
+		return nil, errors.New(dingResp.ErrMsg + ",RequestID: " + dingResp.RequestID)
 	}
 }
