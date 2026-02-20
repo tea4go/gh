@@ -481,7 +481,7 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	return users, nil
 }
 
-// GetUserInfo 根据 UserID 获取用户信息
+// GetV2UserInfo 根据 UserID 获取用户信息
 // https://oapi.dingtalk.com/topapi/v2/user/get?access_token=ACCESS_TOKEN&userid=zhangsan
 func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	_, err := Self.GetAccessToken()
