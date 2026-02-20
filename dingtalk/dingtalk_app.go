@@ -221,6 +221,19 @@ func (Self *TDDReportList) GetReportText(ReportID string) string {
 	return out
 }
 
+type TDDReportTemplateField struct {
+	FieldName string `json:"field_name"`
+	Type      int    `json:"type"`
+	Sort      int    `json:"sort"`
+}
+type TDDReportTemplate struct {
+	Fields       []TDDReportTemplateField `json:"fields"`
+	UserID       string                   `json:"userid"`
+	UserName     string                   `json:"user_name"`
+	TemplateID   string                   `json:"id"`
+	TemplateName string                   `json:"name"`
+}
+
 type TDDReportTemplateItem struct {
 	Name       string `json:"name"`
 	ReportCode string `json:"report_code"`
@@ -776,6 +789,42 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 	case 503:
 		Self.token = nil
 		return Self.GetV2ReportTemplateList(userid)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
+// GetV2ReportTemplate 获取用户日志模板
+// https://oapi.dingtalk.com/topapi/report/template/getbyname?access_token=ACCESS_TOKEN&userid=userid&template_name=template_name
+func (Self *TDingTalkApp) GetV2ReportTemplate(userid, template_name string) (*TDDReportTemplate, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+	ddurl := Self.ddurl + "/topapi/report/template/getbyname"
+	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("userid", userid)
+	req.Param("template_name", template_name)
+	logs.Debug("访问接口：%s (获取用户日志模板)", ddurl)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+	switch dingResp.ErrCode {
+	case 0:
+		var info TDDReportTemplate
+		err = json.Unmarshal(dingResp.Result, &info)
+		if err != nil {
+			return nil, err
+		}
+		logs.Debug("返回数据：%d 个字段", len(info.Fields))
+		return &info, nil
+	case 503:
+		Self.token = nil
+		return Self.GetV2ReportTemplate(userid, template_name)
 	default:
 		return nil, errors.New(dingResp.ErrMsg)
 	}

@@ -164,6 +164,16 @@ func TestGetV2ReportTemplateList(t *testing.T) {
 	}
 }
 
+func TestGetV2ReportTemplate(t *testing.T) {
+	reportList, err := app.GetV2ReportTemplate("201", "周报")
+	if err != nil {
+		t.Fatalf("查询用户日志模板出错: %v", err)
+	}
+
+	for _, v := range reportList.Fields {
+		t.Logf("Typer=%d - Sort=%d : %s", v.Type, v.Sort, v.FieldName)
+	}
+}
 func TestCreateV2Report(t *testing.T) {
 	a_text := `售前项目
 1）商机支撑
