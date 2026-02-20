@@ -176,6 +176,23 @@ func (Self *TDDUser) DisplayName() string {
 	}
 }
 
+// String 转换为字符串
+func (Self *TDDV2User) String() string {
+	s, _ := json.Marshal(Self)
+	var out bytes.Buffer
+	json.Indent(&out, s, "", "\t")
+	return string(out.Bytes())
+}
+
+// DisplayName 获取显示名称
+func (Self *TDDV2User) DisplayName() string {
+	if Self.Attrs.Org == "" {
+		return fmt.Sprintf("%s", Self.StaffName)
+	} else {
+		return fmt.Sprintf("%s(%s)", Self.StaffName, Self.Attrs.Org)
+	}
+}
+
 type TDDReportSimpleItem struct {
 	CreateTime   int64  `json:"create_time"`
 	CreatorID    string `json:"creator_id"`
