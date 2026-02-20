@@ -401,8 +401,8 @@ func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
 	ddurl := "https://api.dingtalk.com/v1.0/oauth2/jsapiTickets"
 
 	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	//req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
-	req.Param("access_token", Self.token.AccessToken)
+	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
+	//req.Param("access_token", Self.token.AccessToken)
 	logs.Debug("访问接口：%s (获取jsapiTicket)", ddurl)
 
 	var reqData TJsapiTicket
@@ -418,7 +418,7 @@ func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
 	reqData.CreateDate = time.Now()
 	Self.ticket = &reqData
 
-	logs.Debug("返回数据：%s 超时 %d", reqData.JsapiTicket, reqData.ExpiresIn)
+	logs.Debug("返回数据：%s 超时 %d (%s)", utils.GetShowKey(reqData.JsapiTicket), reqData.ExpiresIn, reqData.CreateDate.Add(time.Duration(reqData.ExpiresIn)*time.Second).Format(utils.DateTimeFormat))
 	return reqData.JsapiTicket, nil
 }
 
