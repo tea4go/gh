@@ -45,6 +45,28 @@ func (Self *TAccessToken) IsValid() bool {
 	return Self.AccessToken != "" && int(time.Now().Unix()-Self.CreateDate.Unix()) <= Self.ExpiresIn
 }
 
+type TJsapiTicket struct {
+	Code        string `json:"code"`
+	Message     string `json:"message"`
+	RequestId   string `json:"requestid"`
+	JsapiTicket string `json:"jsapiTicket"`
+	ExpiresIn   int    `json:"expireIn"`
+	CreateDate  time.Time
+}
+
+// String 转换为字符串
+func (Self *TJsapiTicket) String() string {
+	s, _ := json.Marshal(Self)
+	var out bytes.Buffer
+	json.Indent(&out, s, "", "\t")
+	return string(out.Bytes())
+}
+
+// IsValid 检查 JsapiTicket 是否有效
+func (Self *TJsapiTicket) IsValid() bool {
+	return Self.JsapiTicket != "" && int(time.Now().Unix()-Self.CreateDate.Unix()) <= Self.ExpiresIn
+}
+
 type workNotify struct {
 	TResult
 	TaskId int `json:"task_id"`
@@ -314,6 +336,7 @@ type TDingTalkApp struct {
 	appsecret         string
 	agent_id          string
 	token             *TAccessToken
+	ticket            *TJsapiTicket
 	timeout_connect   time.Duration
 	timeout_readwrite time.Duration
 }
@@ -333,6 +356,70 @@ func GetDingTalkApp(appkey, appsecret string, agent_id string) *TDingTalkApp {
 // SetAgentId 设置 Agent ID
 func (Self *TDingTalkApp) SetAgentId(agent_id string) {
 	Self.agent_id = agent_id
+}
+
+// GetAccessToken 获取 AccessToken
+// https://oapi.dingtalk.com/gettoken?appkey=key&appsecret=secret
+// {"errorCode":503,"success":false,"errorMsg":"不合法的access_token"}
+func (Self *TDingTalkApp) GetAccessToken() (string, error) {
+	if Self.token != nil && Self.token.IsValid() {
+		return Self.token.AccessToken, nil
+	}
+
+	req := network.HttpGet(Self.ddurl+"/gettoken").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("appkey", Self.appkey)
+	req.Param("appsecret", Self.appsecret)
+
+	var info TAccessToken
+	err := req.ToJSON(&info)
+	if err != nil {
+		return "", errors.New("获取钉钉临时令牌失败！")
+	}
+	if info.ErrCode == 0 {
+		info.ExpiresIn = 7200
+		info.CreateDate = time.Now()
+		Self.token = &info
+		//logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... OK (%s)", info.AccessToken)
+		return info.AccessToken, nil
+	} else {
+		logs.Debug("GetAccessToken() : 获取钉钉Token信息失败，%s(%d)", info.ErrMsg, info.ErrCode)
+		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode)
+	}
+}
+
+// 获取jsapiTicket (这里需要实现获取ticket的逻辑，可能是从缓存或钉钉API获取)
+func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
+	if Self.ticket != nil && Self.ticket.IsValid() {
+		return Self.ticket.JsapiTicket, nil
+	}
+
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return "", err
+	}
+
+	ddurl := "https://api.dingtalk.com/v1.0/oauth2/jsapiTickets"
+
+	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	//req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
+	req.Param("access_token", Self.token.AccessToken)
+	logs.Debug("访问接口：%s (获取jsapiTicket)", ddurl)
+
+	var reqData TJsapiTicket
+	err = req.ToJSON(&reqData)
+	if err != nil {
+		return "", errors.New("获取钉钉Ticket失败！")
+	}
+
+	if reqData.Code != "" {
+		return "", errors.New(reqData.Message)
+	}
+
+	reqData.CreateDate = time.Now()
+	Self.ticket = &reqData
+
+	logs.Debug("返回数据：%s 超时 %d", reqData.JsapiTicket, reqData.ExpiresIn)
+	return reqData.JsapiTicket, nil
 }
 
 // GetAdmins 获取管理员列表
@@ -741,36 +828,6 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 		return Self.SendWorkNotify(user_id, msg_text)
 	default:
 		return -1, errors.New(info.ErrMsg)
-	}
-}
-
-// GetAccessToken 获取 AccessToken
-// https://oapi.dingtalk.com/gettoken?appkey=key&appsecret=secret
-// {"errorCode":503,"success":false,"errorMsg":"不合法的access_token"}
-func (Self *TDingTalkApp) GetAccessToken() (string, error) {
-	if Self.token != nil && Self.token.IsValid() {
-		return Self.token.AccessToken, nil
-	}
-
-	req := network.HttpGet(Self.ddurl+"/gettoken").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	req.Param("appkey", Self.appkey)
-	req.Param("appsecret", Self.appsecret)
-
-	var info TAccessToken
-	err := req.ToJSON(&info)
-	if err != nil {
-		fmt.Println(err.Error())
-		return "", errors.New("获取钉钉临时令牌失败！")
-	}
-	if info.ErrCode == 0 {
-		info.ExpiresIn = 7200
-		info.CreateDate = time.Now()
-		Self.token = &info
-		//logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... OK (%s)", info.AccessToken)
-		return info.AccessToken, nil
-	} else {
-		logs.Debug("GetAccessToken() : 获取钉钉Token信息失败，%s(%d)", info.ErrMsg, info.ErrCode)
-		return "", fmt.Errorf("%s(%d)", info.ErrMsg, info.ErrCode)
 	}
 }
 

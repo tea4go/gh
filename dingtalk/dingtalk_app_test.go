@@ -28,6 +28,15 @@ func TestGetAccessToken(t *testing.T) {
 	t.Logf("AccessToken: %s", pkey)
 }
 
+func TestGetJSAPITicket(t *testing.T) {
+	pkey, err := app.GetJSAPITicket()
+	if err != nil {
+		t.Fatalf("获取 JsapiTicket 出错: %v", err)
+	}
+
+	t.Logf("JsapiTicket: %s", pkey)
+}
+
 func TestGetV2UserInfo(t *testing.T) {
 	for i := 0; i < 300; i++ {
 		_, err := app.GetV2UserInfo("201")
