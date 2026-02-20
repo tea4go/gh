@@ -2,6 +2,7 @@ package dingtalk
 
 import (
 	"bytes"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -334,6 +335,7 @@ type TDingTalkApp struct {
 	ddurl             string
 	appkey            string
 	appsecret         string
+	corp_id           string
 	agent_id          string
 	token             *TAccessToken
 	ticket            *TJsapiTicket
@@ -347,6 +349,7 @@ func GetDingTalkApp(appkey, appsecret string, agent_id string) *TDingTalkApp {
 		appkey:            appkey,
 		appsecret:         appsecret,
 		agent_id:          agent_id,
+		corp_id:           appkey,
 		ddurl:             `https://oapi.dingtalk.com`,
 		timeout_connect:   30 * time.Second,
 		timeout_readwrite: 30 * time.Second,
@@ -356,6 +359,30 @@ func GetDingTalkApp(appkey, appsecret string, agent_id string) *TDingTalkApp {
 // SetAgentId 设置 Agent ID
 func (Self *TDingTalkApp) SetAgentId(agent_id string) {
 	Self.agent_id = agent_id
+}
+
+// GetConfig is to return config in json
+func (c *TDingTalkApp) GetConfig(nonceStr string, timestamp string, url string) (string, error) {
+	ticket, err := c.GetJSAPITicket()
+	if err != nil {
+		return "", err
+	}
+
+	s := fmt.Sprintf("jsapi_ticket=%s&noncestr=%s&timestamp=%s&url=%s", ticket, nonceStr, timestamp, url)
+	h := sha1.New()
+	h.Write([]byte(s))
+	bs := h.Sum(nil)
+
+	config := map[string]string{
+		"url":       url,
+		"nonceStr":  nonceStr,
+		"agentId":   c.agent_id,
+		"timeStamp": timestamp,
+		"corpId":    c.corp_id,
+		"ticket":    ticket,
+		"signature": fmt.Sprintf("%x", bs),
+	}
+	return utils.GetJson(&config), nil
 }
 
 // GetAccessToken 获取 AccessToken

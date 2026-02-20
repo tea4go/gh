@@ -1,9 +1,11 @@
 package dingtalk
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	logs "github.com/tea4go/gh/log4go"
 )
@@ -26,6 +28,18 @@ func TestGetAccessToken(t *testing.T) {
 	}
 
 	t.Logf("AccessToken: %s", pkey)
+}
+
+func TestGetConfig(t *testing.T) {
+	nonceStr := "123456"
+	url := "http://localhost:8080"
+	timestamp := fmt.Sprintf("%d", time.Now().Unix())
+	pkey, err := app.GetConfig(nonceStr, timestamp, url)
+	if err != nil {
+		t.Fatalf("获取 Config 出错: %v", err)
+	}
+
+	t.Logf("Config: %s", pkey)
 }
 
 func TestGetJSAPITicket(t *testing.T) {
