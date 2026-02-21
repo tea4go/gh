@@ -384,12 +384,17 @@ func (c *TDingTalkApp) GetConfig(nonceStr string, timestamp string, url string) 
 	config := map[string]string{
 		"url":       url,
 		"nonceStr":  nonceStr,
-		"agentId":   c.appId,
+		"agentId":   c.appkey,
 		"timeStamp": timestamp,
 		"corpId":    c.corp_id,
 		"ticket":    ticket,
 		"signature": fmt.Sprintf("%x", bs),
 	}
+	logs.Debug("TDingTalkApp::GetConfig() : CorpId = %s", config["corpId"])
+	logs.Debug("TDingTalkApp::GetConfig() : AgentId = %s", config["agentId"])
+	logs.Debug("TDingTalkApp::GetConfig() : Ticket = %s", utils.GetShowKey(config["ticket"]))
+	logs.Debug("TDingTalkApp::GetConfig() : Signature = %s", utils.GetShowKey(config["signature"]))
+	logs.Debug("TDingTalkApp::GetConfig() : URL = %s", config["url"])
 	return utils.GetJson(&config), nil
 }
 
