@@ -36,6 +36,7 @@ func TestGetAccessToken(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
+	fmt.Println(app.String())
 	nonceStr := "123456"
 	url := "http://localhost:8080"
 	timestamp := fmt.Sprintf("%d", time.Now().Unix())
