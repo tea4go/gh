@@ -69,8 +69,8 @@ func (w *TDingTalkSDK) computeHmacSha256(sign string, secret string) string {
 }
 
 // Init 初始化
-func (w *TDingTalkSns) Init(appId string, appSecret string) {
-	w.appkey = appId
+func (w *TDingTalkSns) Init(appKey string, appSecret string) {
+	w.appkey = appKey
 	w.appsecret = appSecret
 }
 

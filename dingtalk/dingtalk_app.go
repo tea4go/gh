@@ -344,12 +344,12 @@ type TDingTalkApp struct {
 }
 
 // GetDingTalkApp 获取钉钉 App 实例
-func GetDingTalkApp(appkey, appsecret string, agent_id string) *TDingTalkApp {
+func GetDingTalkApp(appkey, appsecret, corp_id, agent_id string) *TDingTalkApp {
 	return &TDingTalkApp{
 		appkey:            appkey,
 		appsecret:         appsecret,
+		corp_id:           corp_id,
 		agent_id:          agent_id,
-		corp_id:           appkey,
 		ddurl:             `https://oapi.dingtalk.com`,
 		timeout_connect:   30 * time.Second,
 		timeout_readwrite: 30 * time.Second,
