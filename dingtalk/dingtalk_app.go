@@ -333,6 +333,7 @@ type TDDCreateReportParam struct {
 
 type TDingTalkApp struct {
 	ddurl             string
+	appId             string
 	appkey            string
 	appsecret         string
 	corp_id           string
@@ -346,6 +347,7 @@ type TDingTalkApp struct {
 // GetDingTalkApp 获取钉钉 App 实例
 func GetDingTalkApp(appkey, appsecret, corp_id, agent_id string) *TDingTalkApp {
 	return &TDingTalkApp{
+		appId:             "aece1b56-9f3d-497a-8276-a6587ba9025f",
 		appkey:            appkey,
 		appsecret:         appsecret,
 		corp_id:           corp_id,
@@ -831,6 +833,7 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 	ddurl := Self.ddurl + "/topapi/message/corpconversation/asyncsend_v2"
 	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
+	//req.Param("agent_id", Self.agent_id)
 	req.Param("agent_id", Self.agent_id)
 	req.Param("userid_list", user_id)
 	req.Param("msg", msg_text)

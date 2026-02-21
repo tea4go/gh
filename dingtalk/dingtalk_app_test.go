@@ -18,7 +18,11 @@ func TestMain(m *testing.M) {
 	clientID := os.Getenv("DINGTALK_Client_ID")
 	clientSecret := os.Getenv("DINGTALK_Client_Secret")
 	corpId := os.Getenv("DINGTALK_Corp_ID")
-	app = GetDingTalkApp(clientID, clientSecret, corpId, "3867271950")
+	app = GetDingTalkApp(clientID, clientSecret, corpId, "615063230")
+	logs.Debug("clientID = %s", clientID)
+	logs.Debug("clientSecret = %s", clientSecret)
+	logs.Debug("corpId = %s", corpId)
+	logs.Debug("agent_id = %s", app.agent_id)
 	m.Run()
 }
 
