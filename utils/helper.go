@@ -297,7 +297,7 @@ func GetShowPassword(password string) string {
 func GetShowKey(key string) string {
 	if len(key) > 5 {
 		if len(key) > 8 {
-			return fmt.Sprintf("%s***%s", key[:4], key[len(key)-4])
+			return fmt.Sprintf("%s***%s", key[:4], key[len(key)-4:])
 		}
 		return fmt.Sprintf("%s***%c", key[:4], key[len(key)-1])
 	} else {
