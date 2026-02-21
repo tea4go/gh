@@ -344,6 +344,12 @@ type TDingTalkApp struct {
 	timeout_readwrite time.Duration
 }
 
+// String 转换为字符串
+func (Self *TDingTalkApp) String() string {
+	str_text := fmt.Sprintf(`CorpId:%s,AgentId:%s,AppId:%s,AppKey:%s,AppSecret:%s`, utils.GetShowKey(Self.corp_id), Self.agent_id, utils.GetShowKey(Self.appId), utils.GetShowKey(Self.appkey), utils.GetShowKey(Self.appsecret))
+	return str_text
+}
+
 // GetDingTalkApp 获取钉钉 App 实例
 func GetDingTalkApp(appkey, appsecret, corp_id, agent_id string) *TDingTalkApp {
 	return &TDingTalkApp{
@@ -384,7 +390,7 @@ func (c *TDingTalkApp) GetConfig(nonceStr string, timestamp string, url string) 
 	config := map[string]string{
 		"url":       url,
 		"nonceStr":  nonceStr,
-		"agentId":   c.appkey,
+		"agentId":   c.agent_id,
 		"timeStamp": timestamp,
 		"corpId":    c.corp_id,
 		"ticket":    ticket,
