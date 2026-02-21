@@ -333,7 +333,6 @@ type TDDCreateReportParam struct {
 
 type TDingTalkApp struct {
 	ddurl             string
-	appId             string
 	appkey            string
 	appsecret         string
 	corp_id           string
@@ -346,14 +345,13 @@ type TDingTalkApp struct {
 
 // String 转换为字符串
 func (Self *TDingTalkApp) String() string {
-	str_text := fmt.Sprintf(`CorpId:%s,AgentId:%s,AppId:%s,AppKey:%s,AppSecret:%s`, utils.GetShowKey(Self.corp_id), Self.agent_id, utils.GetShowKey(Self.appId), utils.GetShowKey(Self.appkey), utils.GetShowKey(Self.appsecret))
+	str_text := fmt.Sprintf(`CorpId:%s,AgentId:%s,AppKey:%s,AppSecret:%s`, utils.GetShowKey(Self.corp_id), Self.agent_id, utils.GetShowKey(Self.appkey), utils.GetShowKey(Self.appsecret))
 	return str_text
 }
 
 // GetDingTalkApp 获取钉钉 App 实例
 func GetDingTalkApp(appkey, appsecret, corp_id, agent_id string) *TDingTalkApp {
 	return &TDingTalkApp{
-		appId:             "aece1b56-9f3d-497a-8276-a6587ba9025f",
 		appkey:            appkey,
 		appsecret:         appsecret,
 		corp_id:           corp_id,
@@ -390,11 +388,11 @@ func (c *TDingTalkApp) GetConfig(nonceStr string, timestamp string, url string) 
 		"ticket":    ticket,
 		"signature": fmt.Sprintf("%x", bs),
 	}
-	logs.Debug("TDingTalkApp::GetConfig() : CorpId = %s", config["corpId"])
-	logs.Debug("TDingTalkApp::GetConfig() : AgentId = %s", config["agentId"])
-	logs.Debug("TDingTalkApp::GetConfig() : Ticket = %s", utils.GetShowKey(config["ticket"]))
-	logs.Debug("TDingTalkApp::GetConfig() : Signature = %s", utils.GetShowKey(config["signature"]))
-	logs.Debug("TDingTalkApp::GetConfig() : URL = %s", config["url"])
+	// logs.Debug("TDingTalkApp::GetConfig() : CorpId = %s", utils.GetShowKey(config["corpId"]))
+	// logs.Debug("TDingTalkApp::GetConfig() : AgentId = %s", config["agentId"])
+	// logs.Debug("TDingTalkApp::GetConfig() : Ticket = %s", utils.GetShowKey(config["ticket"]))
+	// logs.Debug("TDingTalkApp::GetConfig() : Signature = %s", utils.GetShowKey(config["signature"]))
+	// logs.Debug("TDingTalkApp::GetConfig() : URL = %s", config["url"])
 	return utils.GetJson(&config), nil
 }
 
