@@ -200,7 +200,7 @@ func main() {
 推送TAG命令
 
 ```
-git tag -a v1.3.1 -m "v1.3.1"
+git tag -a v1.3.4 -m "v1.3.4"
 git push origin --tags
 ```
 
