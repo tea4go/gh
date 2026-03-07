@@ -457,6 +457,7 @@ var pVerServer *string
 var pversion *bool
 var pupgrade *bool
 var ppublish *bool
+var selfExit bool //升级成功，是否退出程序
 var phelp *bool
 
 func init() {
@@ -472,11 +473,17 @@ func init() {
 	}
 }
 
+// SetSelfExit 设置升级成功后是否退出程序
+func SetSelfExit(flag bool) {
+	selfExit = flag
+}
+
 // SetForced 设置强制升级标志
 func SetForced() {
 	*pforced = true
 }
 
+// SetUpgrade 设置升级标志
 func SetUpgrade() {
 	*pupgrade = true
 }
@@ -568,7 +575,9 @@ func StartSelfUpdate(avers ...string) {
 			//#endregion
 
 			logs.Notice("升级版本完成")
-			os.Exit(0)
+			if selfExit {
+				os.Exit(0)
+			}
 			return
 		}
 
