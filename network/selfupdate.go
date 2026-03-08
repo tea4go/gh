@@ -404,11 +404,12 @@ func ReStartSelf() error {
 		return fmt.Errorf("获取绝对路径失败，%v", err)
 	}
 
-	// 获取当前进程的所有参数
-	args := os.Args
+	// 添加重启标志，避免无限循环
+	newArgs := append([]string{"--restart"}, os.Args[:]...)
+	logs.Notice("新版本进程参数 %v", newArgs)
 
 	// 创建一个新命令
-	cmd := exec.Command(execPath, args[1:]...)
+	cmd := exec.Command(execPath, newArgs[:]...)
 
 	// 设置标准输入输出
 	cmd.Stdout = os.Stdout
@@ -420,10 +421,11 @@ func ReStartSelf() error {
 
 	// 启动新进程
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("启动新进程失败，%v", err)
+		return fmt.Errorf("启动新版本新进程失败，%v", err)
 	}
 
 	// 退出当前进程
+	logs.Notice("主进程退出， 新版本进程已启动")
 	os.Exit(0)
 	return nil
 }
@@ -496,7 +498,7 @@ var pVerServer *string
 var pversion *bool
 var pupgrade *bool
 var ppublish *bool
-var selfExit bool //升级成功，是否退出程序
+var prestart *bool //升级后是否重启程序
 var phelp *bool
 
 func init() {
@@ -506,15 +508,17 @@ func init() {
 	pupgrade = flag.BoolP("upgrade", "", false, "更新版本。")
 	phelp = flag.BoolP(`help`, ``, false, `显示帮助。`)
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
+	prestart = flag.BoolP(`restart`, ``, false, `升级后是否重启程序。`)
+	flag.CommandLine.MarkHidden("restart")
 	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", keyId, "")
 	if keyId != "" {
 		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
 	}
 }
 
-// SetSelfExit 设置升级成功后是否退出程序
-func SetSelfExit(flag bool) {
-	selfExit = flag
+// SetRestart 设置升级成功后是否重启程序，使其继续运行。
+func SetRestart(flag bool) {
+	*prestart = flag
 }
 
 // SetForced 设置强制升级标志
@@ -533,6 +537,13 @@ func SetPublish() {
 }
 
 func StartSelfUpdate(avers ...string) {
+	// 如果是升级后重启进程，则不需要再升级
+	if len(os.Args) > 1 && os.Args[1] == "--restart" {
+		fmt.Println("这是升级后重启的进程，不需要再升级")
+		os.Exit(0)
+		return
+	}
+
 	if len(avers) > 0 {
 		VerServers = append(VerServers, avers...)
 	}
@@ -613,10 +624,14 @@ func StartSelfUpdate(avers ...string) {
 			}
 			//#endregion
 
-			logs.Notice("升级版本完成")
-			if selfExit {
-				os.Exit(0)
+			logs.Debug("升级版本完成 ...... 是否保持程序继续运行(%v)", *prestart)
+			if *prestart {
+				err := ReStartSelf()
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
+			os.Exit(0)
 			return
 		}
 
@@ -692,6 +707,7 @@ func CheckVerservers(urls []string, count int) []string {
 			logs.Debug("===> 检测版本服务器可用(%s)", u)
 			resp, err := client.Get(u + "/state")
 			if err != nil {
+				logs.Error(utils.GetNetError(err))
 				return
 			}
 			defer resp.Body.Close()
@@ -700,6 +716,7 @@ func CheckVerservers(urls []string, count int) []string {
 				// 读取响应
 				body, err := io.ReadAll(resp.Body)
 				if err != nil {
+					logs.Error(utils.GetNetError(err))
 					return
 				}
 

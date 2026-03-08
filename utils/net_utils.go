@@ -126,6 +126,10 @@ func GetNetError(err error) string {
 		return "远程主机强制关闭了现有连接"
 	}
 
+	if strings.Contains(err.Error(), "way forbidden by its access permissions") {
+		return "访问权限被拒绝，请检查 Windows 防火墙"
+	}
+
 	if strings.Contains(err.Error(), "broken pipe") {
 		return "对端已关闭连接"
 	}
