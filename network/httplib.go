@@ -1178,7 +1178,7 @@ func webManagerAPI(w http.ResponseWriter, r *http.Request) {
 }
 func webAutoTest(w http.ResponseWriter, r *http.Request) {
 	result := make(map[string]interface{})
-	md, _ := utils.GetFileModTime(os.Args[0])
+	md, _ := utils.GetFileModTime(utils.RunFileName())
 	result["app_name"] = "统一接口中心(WebManager)"
 	result["local_ip"] = utils.GetIPAdress()
 	result["build_time"] = md.Format(utils.DateTimeFormat)
