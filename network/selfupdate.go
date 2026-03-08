@@ -11,6 +11,8 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -386,6 +388,43 @@ func DoUpdateWithProgress(downurl, checksum string) error {
 		return err
 	}
 
+	return nil
+}
+
+func ReStartSelf() error {
+	// 获取当前可执行文件路径
+	execPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("获取可执行路径失败，%v", err)
+	}
+
+	// 获取绝对路径
+	execPath, err = filepath.Abs(execPath)
+	if err != nil {
+		return fmt.Errorf("获取绝对路径失败，%v", err)
+	}
+
+	// 获取当前进程的所有参数
+	args := os.Args
+
+	// 创建一个新命令
+	cmd := exec.Command(execPath, args[1:]...)
+
+	// 设置标准输入输出
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Stdin = os.Stdin
+
+	// 跨平台的进程属性设置
+	SetProcAttrs(cmd)
+
+	// 启动新进程
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("启动新进程失败，%v", err)
+	}
+
+	// 退出当前进程
+	os.Exit(0)
 	return nil
 }
 
