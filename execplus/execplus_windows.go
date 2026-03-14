@@ -69,10 +69,20 @@ func (Self *CmdPlus) SetUser(name string) (err error) {
 }
 
 // HideWindow 隐藏窗口
+// CREATE_NEW_PROCESS_GROUP: 创建新进程组
+// DETACHED_PROCESS: 与父进程分离，不继承控制台
+// CREATE_NO_WINDOW: 完全不创建窗口 (0x08000000)
+/*
+属性	   HideWindow = true	                    CreationFlags = 0x08000000
+原理	   设置 STARTUPINFO.wShowWindow = SW_HIDE	设置 CREATE_NO_WINDOW 标志
+效果	   创建窗口但隐藏它	                         不创建窗口
+窗口存在	窗口存在，只是看不见	                  根本没有窗口
+*/
 func (Self *CmdPlus) HideWindow() {
 	// 在windows下不显示cmd窗口
 	if Self.Cmd.SysProcAttr == nil {
 		Self.Cmd.SysProcAttr = &syscall.SysProcAttr{}
 	}
-	Self.Cmd.SysProcAttr.HideWindow = true
+	//Self.Cmd.SysProcAttr.HideWindow = true
+	Self.Cmd.SysProcAttr.CreationFlags |= 0x08000000
 }
