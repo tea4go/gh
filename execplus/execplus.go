@@ -126,3 +126,24 @@ func (Self *CmdPlus) SetEnv(key, value string) bool {
 	}
 	return !find
 }
+
+// GetEnv 获取环境变量
+func (Self *CmdPlus) GetEnv(key string) string {
+	for _, kv := range Self.Env {
+		eq := strings.Index(kv, "=")
+		if eq < 0 {
+			continue
+		}
+		k := kv[:eq]
+		if runtime.GOOS == "windows" {
+			if strings.ToLower(k) == strings.ToLower(key) {
+				return kv[eq+1:]
+			}
+		} else {
+			if k == key {
+				return kv[eq+1:]
+			}
+		}
+	}
+	return ""
+}
