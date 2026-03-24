@@ -130,13 +130,14 @@ var IsDebug bool = false
 
 // FDebug 调试输出
 func FDebug(f string, v ...interface{}) {
-	//fmt.Println("FDebug", IsDebug)
 	if IsDebug {
 		// writeMsg will always add a '\n' character
 		if len(f) > 0 && f[len(f)-1] == '\n' {
 			f = f[0 : len(f)-1]
 		}
-		Print(f, v...)
+
+		fmt.Printf(f, v...)
+		fmt.Println()
 	}
 }
 
