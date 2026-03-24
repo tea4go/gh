@@ -1126,7 +1126,8 @@ func AutoLogin(url, app_key, user_name, pass_word string) (string, *http.Respons
 		Reason string `json:"errmsg,omitempty"`
 	}{}
 
-	state_code, resq, _, err := HttpRequestPB("GET", url, true, params, &result) //登录
+	state_code, resq, output, err := HttpRequestPB("GET", url, true, params, &result) //登录
+	logs.Debug(string(output), state_code, resq, err)
 	if err != nil {
 		return "", resq, err
 	}

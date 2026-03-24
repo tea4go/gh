@@ -136,8 +136,7 @@ func FDebug(f string, v ...interface{}) {
 		if len(f) > 0 && f[len(f)-1] == '\n' {
 			f = f[0 : len(f)-1]
 		}
-		fmt.Printf(f, v...)
-		fmt.Println()
+		Print(f, v...)
 	}
 }
 
