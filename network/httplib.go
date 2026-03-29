@@ -31,8 +31,8 @@ import (
 
 var defaultSetting = THttpSettings{
 	UserAgent:        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36 Edg/91.0.864.48",
-	ConnectTimeout:   5 * time.Second,
-	ReadWriteTimeout: 3 * time.Second,
+	ConnectTimeout:   15 * time.Second,
+	ReadWriteTimeout: 15 * time.Second,
 	EnableCookie:     false,
 	Gzip:             true,
 	DumpBody:         true,
