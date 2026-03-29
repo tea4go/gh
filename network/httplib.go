@@ -204,6 +204,10 @@ func (b *THttpRequest) Setting(setting THttpSettings) *THttpRequest {
 	return b
 }
 
+func (b *THttpRequest) GetSetting() THttpSettings {
+	return b.setting
+}
+
 // SetBasicAuth sets the request's Authorization header to use HTTP Basic Authentication with the provided username and password.
 func (b *THttpRequest) SetBasicAuth(username, password string) *THttpRequest {
 	b.req.SetBasicAuth(username, password)
@@ -821,6 +825,9 @@ func HttpRequest(method, url string, is_cookie bool,
 	//新建Http请求
 	req := NewRequest(url, method)
 
+	setting := req.GetSetting()
+	logs.FDebug("===> SetTimeout(connect=%s, rw=%s)", setting.ConnectTimeout, setting.ReadWriteTimeout)
+
 	if len(header) > 0 {
 		for k, v := range header {
 			logs.FDebug("===> SetHeader(%s) : %v", k, v)
@@ -1126,8 +1133,7 @@ func AutoLogin(url, app_key, user_name, pass_word string) (string, *http.Respons
 		Reason string `json:"errmsg,omitempty"`
 	}{}
 
-	state_code, resq, output, err := HttpRequestPB("GET", url, true, params, &result) //登录
-	logs.Debug(string(output), state_code, resq, err)
+	state_code, resq, _, err := HttpRequestPB("GET", url, true, params, &result) //登录
 	if err != nil {
 		return "", resq, err
 	}

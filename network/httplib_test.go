@@ -8,8 +8,15 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	logs "github.com/tea4go/gh/log4go"
 )
 
+func TestMain(m *testing.M) {
+	logs.SetFDebug(true)
+	logs.SetLogger("console", `{"color":true,"level":7}`)
+	m.Run()
+}
 func TestHttpRequest(t *testing.T) {
 	fmt.Println("=== 开始测试: HTTP 请求 (HttpRequest) ===")
 
@@ -111,7 +118,7 @@ func TestAutoLogin(t *testing.T) {
 	t.Run("登录成功", func(t *testing.T) {
 		code, _, err := AutoLogin(loginURL, testAppKey, testUser, testPass)
 		if err != nil {
-			t.Fatalf("AutoLogin 失败: %v", err)
+			t.Fatalf(err.Error())
 		}
 		t.Logf("登录成功, code: %s", code)
 	})

@@ -315,29 +315,30 @@ func init() {
 func StartLogger(log_names ...string) {
 	var err error
 
-	// 从参数中获取log_level的值，如果未设置则使用传入的log_level
+	// 从环境变量中获取log_level的值，如果未设置则通过参数传入
 	log_level := GetParamInt("log_level", *plog_level)
-	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_level"), *plog_level)
-
-	// 如果log_level大于LevelDebug或者小于LevelEmergency，则将log_level设置为LevelNotice
+	log_short := GetParamBool("log_short", *plog_short)
+	log_server := GetParamString("log_server", "", "")
+	log_name := GetParamString("log_name", "", *plog_name)
+	// 确保log_level在有效范围内
 	if log_level > LevelDebug || log_level < LevelEmergency {
 		log_level = LevelNotice
 	}
-
-	// 从参数中获取log_server的值，如果未设置则使用空字符串
-	log_short := GetParamBool("log_short", *plog_short)
-
-	// 从参数中获取log_server的值，如果未设置则使用空字符串
-	log_server := GetParamString("log_server", "", "")
-
-	// 从参数中获取log_name的值
-	log_name := GetParamString("log_name", "", *plog_name)
-	FDebug("GetParamString(\"log_name\",Env[%s],Default[%s],Param[%s])", os.Getenv("log_name"), "", *plog_name)
-
 	if (len(log_names) > 0) && (log_names[0] != "") {
-		FDebug("SetLogName(%s)", log_names[0])
 		log_name = log_names[0]
 	}
+
+	// 设置控制台日志信息，包括颜色输出和级别
+	err = SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d,"log_short":%t}`, log_level, log_short))
+	if err != nil {
+		FDebug("SetLogger(console,%d,%s) - %v", log_level, log_name, err)
+	}
+
+	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_level"), *plog_level)
+	FDebug("GetParamBool(\"log_short\",Env[%s],Param[%t])", os.Getenv("log_short"), *plog_short)
+	FDebug("GetParamString(\"log_name\",Env[%s],Default[%s],Param[%s])", os.Getenv("log_name"), "", *plog_name)
+	FDebug("GetParamString(\"log_server\",Env[%s],Default[%s],Param[无])", os.Getenv("log_server"), "")
+
 	// 如果log_server不为空，则设置日志连接信息
 	if strings.TrimSpace(log_server) != "" {
 		// 设置日志连接信息，包括地址、级别和名称
@@ -347,10 +348,5 @@ func StartLogger(log_names ...string) {
 		}
 	}
 
-	// 设置控制台日志信息，包括颜色输出和级别
-	err = SetLogger("console", fmt.Sprintf(`{"color":true,"level":%d,"log_short":%t}`, log_level, log_short))
-	if err != nil {
-		FDebug("SetLogger(console,%d,%s) - %v", log_level, log_name, err)
-	}
 	SetLevel(log_level)
 }
