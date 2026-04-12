@@ -870,40 +870,55 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 	}
 }
 
-// GetV2ReportTemplateList 获取用户可见的日志模板列表
+// GetV2ReportTemplateList 获取用户可见的日志模板列表（自动分页）
 // https://oapi.dingtalk.com/topapi/report/template/listbyuserid?access_token=ACCESS_TOKEN&userid=userid&cursor=cursor&size=size
 func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTemplateItem, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
 		return nil, err
 	}
-	ddurl := Self.ddurl + "/topapi/report/template/listbyuserid"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	req.Param("access_token", Self.token.AccessToken)
-	req.Param("userid", userid)
-	req.Param("cursor", "0")
-	req.Param("size", "100")
-	logs.Debug("访问接口：%s (获取用户可见的日志模板)", ddurl)
 
-	var dingResp TDingTalkResponse
-	err = req.ToJSON(&dingResp)
-	if err != nil {
-		return nil, err
-	}
-	switch dingResp.ErrCode {
-	case 0:
-		var info TDDReportTemplateList
-		err = json.Unmarshal(dingResp.Result, &info)
+	var allItems []TDDReportTemplateItem
+	var cursor int64 = 0
+	pageSize := 100
+
+	for {
+		ddurl := Self.ddurl + "/topapi/report/template/listbyuserid"
+		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req.Param("access_token", Self.token.AccessToken)
+		req.Param("userid", userid)
+		req.Param("cursor", fmt.Sprintf("%d", cursor))
+		req.Param("size", fmt.Sprintf("%d", pageSize))
+		logs.Debug("访问接口：%s (获取用户可见的日志模板) cursor=%d", ddurl, cursor)
+
+		var dingResp TDingTalkResponse
+		err = req.ToJSON(&dingResp)
 		if err != nil {
 			return nil, err
 		}
-		logs.Debug("返回数据：%d 个日志模板", len(info.TemplateList))
-		return info.TemplateList, nil
-	case 503:
-		Self.token = nil
-		return Self.GetV2ReportTemplateList(userid)
-	default:
-		return nil, errors.New(dingResp.ErrMsg)
+		switch dingResp.ErrCode {
+		case 0:
+			var page TDDReportTemplateList
+			err = json.Unmarshal(dingResp.Result, &page)
+			if err != nil {
+				return nil, err
+			}
+			allItems = append(allItems, page.TemplateList...)
+			logs.Debug("返回数据：本页 %d 个日志模板，累计 %d 个", len(page.TemplateList), len(allItems))
+			if page.NextCursor == 0 || len(page.TemplateList) == 0 || page.NextCursor == cursor {
+				return allItems, nil
+			}
+			cursor = page.NextCursor
+			case 503:
+				Self.token = nil
+			_, err = Self.GetAccessToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		default:
+			return nil, errors.New(dingResp.ErrMsg)
+		}
 	}
 }
 
@@ -943,22 +958,21 @@ func (Self *TDingTalkApp) GetV2ReportTemplate(userid, template_name string) (*TD
 	}
 }
 
-// GetV2ReportList 获取用户在指定时间范围内的日志列表
-// https://oapi.dingtalk.com/topapi/v2/report/list?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
+// GetV2ReportList 获取用户在指定时间范围内的日志列表（自动分页）
+// https://oapi.dingtalk.com/topapi/report/list?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (*TDDReportList, error) {
-	// 处理时间格式
+	// 处理时间格式：start_time 取当天 00:00:00，end_time 取当天 23:59:59
 	layout := "2006-01-02"
 	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	startTimeText := fmt.Sprintf("%d", startTime.UnixMilli())
 	endTime, err := time.ParseInLocation(layout, end_time, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	endTimeText := fmt.Sprintf("%d", endTime.UnixMilli())
-	if endTime.UnixMilli()-startTime.UnixMilli() > int64(180*24*60*60*1000) {
+	endTime = endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+	if endTime.Sub(startTime).Hours() > 180*24 {
 		return nil, fmt.Errorf("查询时间跨度不能超过180天")
 	}
 
@@ -966,54 +980,71 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	if err != nil {
 		return nil, err
 	}
-	ddurl := Self.ddurl + "/topapi/report/list"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	req.Param("access_token", Self.token.AccessToken)
-	req.Param("userid", userid)
-	req.Param("start_time", startTimeText)
-	req.Param("end_time", endTimeText)
-	req.Param("cursor", "0")
-	req.Param("size", "200")
-	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志列表) %s - %s", ddurl, startTimeText, endTimeText)
 
-	var dingResp TDingTalkResponse
-	err = req.ToJSON(&dingResp)
-	if err != nil {
-		return nil, err
-	}
-	switch dingResp.ErrCode {
-	case 0:
-		var info TDDReportList
-		err = json.Unmarshal(dingResp.Result, &info)
+	var allList TDDReportList
+	var cursor int64 = 0
+	pageSize := 20
+
+	for {
+		ddurl := Self.ddurl + "/topapi/report/list"
+		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req.Param("access_token", Self.token.AccessToken)
+		req.Param("userid", userid)
+		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
+		req.Param("end_time", fmt.Sprintf("%d", endTime.UnixMilli()))
+		req.Param("cursor", fmt.Sprintf("%d", cursor))
+		req.Param("size", fmt.Sprintf("%d", pageSize))
+		logs.Debug("访问接口：%s (获取用户日志列表) cursor=%d, %s - %s", ddurl, cursor, start_time, end_time)
+
+		var dingResp TDingTalkResponse
+		err = req.ToJSON(&dingResp)
 		if err != nil {
 			return nil, err
 		}
-		logs.Debug("返回数据：%d 个日志", len(info.DataList))
-		return &info, nil
-	case 503:
-		Self.token = nil
-		return Self.GetV2ReportList(userid, start_time, end_time)
-	default:
-		return nil, errors.New(dingResp.ErrMsg)
+		switch dingResp.ErrCode {
+		case 0:
+			var page TDDReportList
+			err = json.Unmarshal(dingResp.Result, &page)
+			if err != nil {
+				return nil, err
+			}
+			allList.DataList = append(allList.DataList, page.DataList...)
+			logs.Debug("返回数据：本页 %d 个日志，累计 %d 个", len(page.DataList), len(allList.DataList))
+			if !page.HasMore {
+				allList.HasMore = false
+				allList.NextCursor = 0
+				allList.Size = len(allList.DataList)
+				return &allList, nil
+			}
+			cursor = page.NextCursor
+		case 503:
+			Self.token = nil
+			_, err = Self.GetAccessToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		default:
+			return nil, errors.New(dingResp.ErrMsg)
+		}
 	}
 }
 
-// GetV2ReportSimpleList 获取用户在指定时间范围内的日志概要列表
-// https://oapi.dingtalk.com/topapi/v2/report/simplelist?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
+// GetV2ReportSimpleList 获取用户在指定时间范围内的日志概要列表（自动分页）
+// https://oapi.dingtalk.com/topapi/report/simplelist?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time string) ([]TDDReportSimpleItem, error) {
-	// 处理时间格式
+	// 处理时间格式：start_time 取当天 00:00:00，end_time 取当天 23:59:59
 	layout := "2006-01-02"
 	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	startTimeText := fmt.Sprintf("%d", startTime.UnixMilli())
 	endTime, err := time.ParseInLocation(layout, end_time, time.Local)
 	if err != nil {
 		return nil, err
 	}
-	endTimeText := fmt.Sprintf("%d", endTime.UnixMilli())
-	if endTime.UnixMilli()-startTime.UnixMilli() > int64(180*24*60*60*1000) {
+	endTime = endTime.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+	if endTime.Sub(startTime).Hours() > 180*24 {
 		return nil, fmt.Errorf("查询时间跨度不能超过180天")
 	}
 
@@ -1021,35 +1052,50 @@ func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time str
 	if err != nil {
 		return nil, err
 	}
-	ddurl := Self.ddurl + "/topapi/report/simplelist"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	req.Param("access_token", Self.token.AccessToken)
-	req.Param("userid", userid)
-	req.Param("start_time", startTimeText)
-	req.Param("end_time", endTimeText)
-	req.Param("cursor", "0")
-	req.Param("size", "200")
-	logs.Debug("访问接口：%s (获取用户在指定时间范围内的日志概要列表)", ddurl)
 
-	var dingResp TDingTalkResponse
-	err = req.ToJSON(&dingResp)
-	if err != nil {
-		return nil, err
-	}
-	switch dingResp.ErrCode {
-	case 0:
-		var info TDDReportSimpleList
-		err = json.Unmarshal(dingResp.Result, &info)
+	var allItems []TDDReportSimpleItem
+	var cursor int64 = 0
+	pageSize := 20
+
+	for {
+		ddurl := Self.ddurl + "/topapi/report/simplelist"
+		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req.Param("access_token", Self.token.AccessToken)
+		req.Param("userid", userid)
+		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
+		req.Param("end_time", fmt.Sprintf("%d", endTime.UnixMilli()))
+		req.Param("cursor", fmt.Sprintf("%d", cursor))
+		req.Param("size", fmt.Sprintf("%d", pageSize))
+		logs.Debug("访问接口：%s (获取用户日志概要列表) cursor=%d, %s - %s", ddurl, cursor, start_time, end_time)
+
+		var dingResp TDingTalkResponse
+		err = req.ToJSON(&dingResp)
 		if err != nil {
 			return nil, err
 		}
-		logs.Debug("返回数据：%d 个日志概要", len(info.DataList))
-		return info.DataList, nil
-	case 503:
-		Self.token = nil
-		return Self.GetV2ReportSimpleList(userid, start_time, end_time)
-	default:
-		return nil, errors.New(dingResp.ErrMsg)
+		switch dingResp.ErrCode {
+		case 0:
+			var page TDDReportSimpleList
+			err = json.Unmarshal(dingResp.Result, &page)
+			if err != nil {
+				return nil, err
+			}
+			allItems = append(allItems, page.DataList...)
+			logs.Debug("返回数据：本页 %d 个日志概要，累计 %d 个", len(page.DataList), len(allItems))
+			if !page.HasMore {
+				return allItems, nil
+			}
+			cursor = page.NextCursor
+		case 503:
+			Self.token = nil
+			_, err = Self.GetAccessToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		default:
+			return nil, errors.New(dingResp.ErrMsg)
+		}
 	}
 }
 

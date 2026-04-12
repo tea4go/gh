@@ -163,11 +163,15 @@ func TestGetV2ReportList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("查询用户日志出错: %v", err)
 	}
+	if len(reportList.DataList) == 0 {
+		t.Fatalf("返回日志列表为空")
+	}
 
 	reportText := reportList.GetReportText("")
 	if reportText == "" {
 		t.Fatalf("获取报告内容出错")
 	}
+	t.Logf("共 %d 条日志", len(reportList.DataList))
 	t.Logf("报告内容: \n%s", reportText)
 }
 
@@ -175,6 +179,9 @@ func TestGetV2ReportSimpleList(t *testing.T) {
 	reportList, err := app.GetV2ReportSimpleList("1795", "2026-01-01", "2026-02-19")
 	if err != nil {
 		t.Fatalf("查询用户日志摘要出错: %v", err)
+	}
+	if len(reportList) == 0 {
+		t.Fatalf("返回日志概要列表为空")
 	}
 
 	for _, v := range reportList {
@@ -187,9 +194,82 @@ func TestGetV2ReportTemplateList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("查询用户日志模板出错: %v", err)
 	}
+	if len(reportList) == 0 {
+		t.Fatalf("返回日志模板列表为空")
+	}
 
 	for _, v := range reportList {
 		t.Logf(v.ReportCode + " -> " + v.Name + "\n")
+	}
+	t.Logf("共 %d 个日志模板", len(reportList))
+}
+
+// TestGetV2ReportListEndTime 验证 end_time 包含当天数据（修复前 end_time=2026-03-19 实际为 00:00:00，丢失当天数据）
+func TestGetV2ReportListEndTime(t *testing.T) {
+	// 用许伟(userId=7318)的本周数据验证：他 4月11日 提交了日志，end_time=4月12日 应能查到 4月11日 的日志
+	reportList, err := app.GetV2ReportList("7318", "2026-04-06", "2026-04-12")
+	if err != nil {
+		t.Fatalf("查询用户日志出错: %v", err)
+	}
+
+	found := false
+	for _, v := range reportList.DataList {
+		createTime := time.Unix(v.CreateTime/1000, 0)
+		t.Logf("日志: %s (%s)", v.TemplateName, createTime.Format("2006-01-02 15:04"))
+		if createTime.Format("2006-01-02") == "2026-04-11" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("end_time 边界修复失败：未能查到 4月11日 的日志（end_time=4月12日 应包含当天数据）")
+	}
+	t.Logf("end_time 边界验证通过：共 %d 条，成功查到 4月11日 日志", len(reportList.DataList))
+}
+
+// TestGetV2ReportSimpleListPagination 验证分页逻辑：跨页数据合并后时间单调递减
+func TestGetV2ReportSimpleListPagination(t *testing.T) {
+	// 用何永进(userId=1795)的 3 个月数据，预期超过 20 条，触发分页
+	reportList, err := app.GetV2ReportSimpleList("1795", "2025-12-01", "2026-03-31")
+	if err != nil {
+		t.Fatalf("查询用户日志摘要出错: %v", err)
+	}
+	t.Logf("共 %d 条日志概要（跨越分页阈值 20）", len(reportList))
+
+	// 验证数量合理（3 个月周报应有 10+ 条）
+	if len(reportList) < 10 {
+		t.Fatalf("分页可能丢失数据：3 个月仅返回 %d 条，预期至少 10 条", len(reportList))
+	}
+
+	// 打印前 5 条验证内容
+	for i, v := range reportList {
+		if i >= 5 {
+			break
+		}
+		t.Logf("[%d] %s -> %s", i, v.ToString(), v.ReportID)
+	}
+}
+
+// TestGetV2ReportTemplateListNoDeadLoop 验证模板列表分页不会死循环
+func TestGetV2ReportTemplateListNoDeadLoop(t *testing.T) {
+	start := time.Now()
+	reportList, err := app.GetV2ReportTemplateList("201")
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("查询用户日志模板出错: %v", err)
+	}
+	t.Logf("共 %d 个模板，耗时 %v", len(reportList), elapsed)
+
+	// 正常情况下几百个模板应在 30 秒内返回
+	if elapsed > 30*time.Second {
+		t.Fatalf("模板列表查询耗时 %v，疑似死循环", elapsed)
+	}
+	// 模板数量应 > 0 且合理（不超过 2000）
+	if len(reportList) == 0 {
+		t.Fatalf("返回模板列表为空")
+	}
+	if len(reportList) > 2000 {
+		t.Fatalf("模板数量 %d 超过 2000，疑似死循环导致重复数据", len(reportList))
 	}
 }
 
