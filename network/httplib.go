@@ -31,8 +31,8 @@ import (
 
 var defaultSetting = THttpSettings{
 	UserAgent:        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.101 Safari/537.36 Edg/91.0.864.48",
-	ConnectTimeout:   5 * time.Second,
-	ReadWriteTimeout: 3 * time.Second,
+	ConnectTimeout:   15 * time.Second,
+	ReadWriteTimeout: 15 * time.Second,
 	EnableCookie:     false,
 	Gzip:             true,
 	DumpBody:         true,
@@ -202,6 +202,10 @@ func (b *THttpRequest) GetResponse() *http.Response {
 func (b *THttpRequest) Setting(setting THttpSettings) *THttpRequest {
 	b.setting = setting
 	return b
+}
+
+func (b *THttpRequest) GetSetting() THttpSettings {
+	return b.setting
 }
 
 // SetBasicAuth sets the request's Authorization header to use HTTP Basic Authentication with the provided username and password.
@@ -820,6 +824,9 @@ func HttpRequest(method, url string, is_cookie bool,
 	logs.FDebug("= %s - %s", method, url)
 	//新建Http请求
 	req := NewRequest(url, method)
+
+	setting := req.GetSetting()
+	logs.FDebug("===> SetTimeout(connect=%s, rw=%s)", setting.ConnectTimeout, setting.ReadWriteTimeout)
 
 	if len(header) > 0 {
 		for k, v := range header {
