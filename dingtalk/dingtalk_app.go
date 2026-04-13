@@ -691,8 +691,8 @@ func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
 }
 
 // GetV2ReportUsers 获取用户所属部门的员工列表（按多级子部门分组）
-// 如果用户是部门主管，返回该部门下所有层级子团队的全部员工（含主管）
-// 如果用户不是部门主管，返回该部门下所有层级子团队除主管之外的员工
+// 如果用户是部门主管，返回该部门及所有层级子团队的全部员工（含主管）
+// 如果用户不是部门主管，返回该部门及所有层级子团队除主管之外的员工
 func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, error) {
 	userInfo, err := Self.GetV2UserInfo(userid)
 	if err != nil {
@@ -708,31 +708,14 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 
 	for _, deptId := range userInfo.Department {
 		isLeader := leaderMap[deptId]
-		children, err := Self.buildReportDeptTree(deptId, isLeader)
-		if err != nil {
-			return nil, err
-		}
-		report.Departments = append(report.Departments, children...)
-	}
 
-	return report, nil
-}
-
-// buildReportDeptTree 递归构建子部门树
-func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) ([]*TDDV2ReportDept, error) {
-	subDeptIds, err := Self.GetSubDeptIds(parentDeptId)
-	if err != nil {
-		return nil, err
-	}
-
-	var result []*TDDV2ReportDept
-	for _, subDeptId := range subDeptIds {
-		deptInfo, err := Self.GetV2Department(subDeptId)
+		// 获取部门本身的信息和员工（同级）
+		deptInfo, err := Self.GetV2Department(deptId)
 		if err != nil {
 			return nil, err
 		}
 
-		deptUsers, err := Self.GetDeptUsers(subDeptId)
+		deptUsers, err := Self.GetDeptUsers(deptId)
 		if err != nil {
 			return nil, err
 		}
@@ -741,8 +724,9 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 		if isLeader {
 			users = deptUsers
 		} else {
+			// 非主管：排除该部门的主管，保留同级员工
 			for _, u := range deptUsers {
-				if !Self.isLeaderInDept(u, subDeptId) {
+				if !Self.isLeaderInDept(u, deptId) {
 					users = append(users, u)
 				}
 			}
@@ -752,11 +736,22 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			return users[i].StaffCode < users[j].StaffCode
 		})
 
-		// 递归获取下一级子部门
-		children, err := Self.buildReportDeptTree(subDeptId, isLeader)
+		// 递归获取所有层级子部门
+		children, err := Self.buildReportDeptTree(deptId, isLeader)
 		if err != nil {
 			return nil, err
 		}
+
+		report.Departments = append(report.Departments, &TDDV2ReportDept{
+			DeptId:   deptId,
+			DeptName: deptInfo.Name,
+			Users:    users,
+			Children: children,
+		})
+	}
+
+	return report, nil
+}
 
 		result = append(result, &TDDV2ReportDept{
 			DeptId:   subDeptId,
