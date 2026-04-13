@@ -37,3 +37,4 @@ log4go/*.log
 nustdbclient/nustdb/0.dat
 nustdbclient/nustdb/bucket.Meta
 nustdbclient/nustdb/nutsdb-flock
+dingtalk/.claude/settings.local.json
