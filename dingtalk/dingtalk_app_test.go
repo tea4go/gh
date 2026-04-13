@@ -64,7 +64,6 @@ func TestGetV2UserInfo(t *testing.T) {
 		t.Fatalf("获取用户信息出错: %v", err)
 	}
 
-	t.Logf("用户信息: %+v", user)
 	ffmt.Puts(user)
 }
 
