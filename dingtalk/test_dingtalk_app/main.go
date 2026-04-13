@@ -1,0 +1,427 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
+	dingtalk "github.com/tea4go/gh/dingtalk"
+	logs "github.com/tea4go/gh/log4go"
+)
+
+var app *dingtalk.TDingTalkApp
+
+func initApp() {
+	clientID := os.Getenv("DINGTALK_Client_ID")
+	clientSecret := os.Getenv("DINGTALK_Client_Secret")
+	corpId := os.Getenv("DINGTALK_Corp_ID")
+	agentId := os.Getenv("DINGTALK_Agent_ID")
+	if agentId == "" {
+		agentId = "615063230"
+	}
+
+	if clientID == "" || clientSecret == "" {
+		fmt.Println("请设置环境变量：")
+		fmt.Println("  DINGTALK_Client_ID    - 应用的 AppKey")
+		fmt.Println("  DINGTALK_Client_Secret - 应用的 AppSecret")
+		fmt.Println("  DINGTALK_Corp_ID      - 企业 CorpId（可选）")
+		fmt.Println("  DINGTALK_Agent_ID     - 应用 AgentId（可选，默认 615063230）")
+		os.Exit(1)
+	}
+
+	logs.SetFDebug(false)
+	logs.SetLogger("console", `{"color":true,"level":7}`)
+
+	app = dingtalk.GetDingTalkApp(clientID, clientSecret, corpId, agentId)
+}
+
+func printJSON(v interface{}) {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		fmt.Printf("JSON序列化失败: %v\n", err)
+		return
+	}
+	fmt.Println(string(data))
+}
+
+func printReportDept(dept *dingtalk.TDDV2ReportDept, indent string) {
+	fmt.Printf("%s【%s】(共 %d 人)\n", indent, dept.DeptName, len(dept.Users))
+	for _, u := range dept.Users {
+		fmt.Printf("%s  %s, %s, %s\n", indent, u.UserId, u.StaffCode, u.StaffName)
+	}
+	for _, child := range dept.Children {
+		printReportDept(child, indent+"  ")
+	}
+}
+
+func usage() {
+	fmt.Println(`钉钉接口测试工具
+
+用法: test_dingtalk_app <命令> [参数]
+
+命令列表:
+  access-token                                  获取 AccessToken
+  jsapi-ticket                                  获取 JSAPI Ticket
+  config <nonceStr> <timestamp> <url>           获取前端鉴权配置
+  admins                                        获取管理员列表
+  user <userid>                                 根据userid获取用户详情
+  user-by-phone <phone>                         根���手机号获取用户详情
+  user-by-unionid <unionid>                     根据unionid获取用户详情
+  users-by-name <name>                          根据姓名搜索用户列表
+  org-name <userid>                             获取用户所属组织名称
+  job-name <userid>                             获取用户岗位名称
+  dept <deptid>                                 获取部门详情
+  dept-fullname <deptid>                        获取部门完整路径名称
+  dept-users <deptid>                           获取部门下所有用户
+  sub-depts <deptid>                            获取子部门ID列表
+  report-users <userid>                         获取用户所属部门的员工列表（按子部门分组）
+  report-templates <userid>                     获取用户可用的日志模板列表
+  report-template <userid> <template_name>      获取指定日志模板详情
+  report-list <userid> <start> <end>            获取用户日志列表（详情）
+  report-simple-list <userid> <start> <end>     获取用户日志列表（简要）
+  create-report <userid> <template_id> <to_ids> <text_a> <text_b>
+                                                创建日志
+  send-notify <userid> <msg_json>               发送工作通知
+  login-info <authcode>                         通过临时授权码获取登录信息`)
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		usage()
+		return
+	}
+
+	initApp()
+
+	cmd := os.Args[1]
+	args := os.Args[2:]
+
+	switch cmd {
+	case "access-token":
+		cmdAccessToken()
+	case "jsapi-ticket":
+		cmdJSAPITicket()
+	case "config":
+		requireArgs(cmd, args, 3)
+		cmdConfig(args[0], args[1], args[2])
+	case "admins":
+		cmdAdmins()
+	case "user":
+		requireArgs(cmd, args, 1)
+		cmdUserInfo(args[0])
+	case "user-by-phone":
+		requireArgs(cmd, args, 1)
+		cmdUserInfoByPhone(args[0])
+	case "user-by-unionid":
+		requireArgs(cmd, args, 1)
+		cmdUserInfoByUnionId(args[0])
+	case "users-by-name":
+		requireArgs(cmd, args, 1)
+		cmdUsersByName(args[0])
+	case "org-name":
+		requireArgs(cmd, args, 1)
+		cmdOrgName(args[0])
+	case "job-name":
+		requireArgs(cmd, args, 1)
+		cmdJobName(args[0])
+	case "dept":
+		requireArgs(cmd, args, 1)
+		cmdDept(parseIntArg(args[0]))
+	case "dept-fullname":
+		requireArgs(cmd, args, 1)
+		cmdDeptFullName(parseIntArg(args[0]))
+	case "dept-users":
+		requireArgs(cmd, args, 1)
+		cmdDeptUsers(parseIntArg(args[0]))
+	case "sub-depts":
+		requireArgs(cmd, args, 1)
+		cmdSubDepts(parseIntArg(args[0]))
+	case "report-users":
+		requireArgs(cmd, args, 1)
+		cmdReportUsers(args[0])
+	case "report-templates":
+		requireArgs(cmd, args, 1)
+		cmdReportTemplates(args[0])
+	case "report-template":
+		requireArgs(cmd, args, 2)
+		cmdReportTemplate(args[0], args[1])
+	case "report-list":
+		requireArgs(cmd, args, 3)
+		cmdReportList(args[0], args[1], args[2])
+	case "report-simple-list":
+		requireArgs(cmd, args, 3)
+		cmdReportSimpleList(args[0], args[1], args[2])
+	case "create-report":
+		requireArgs(cmd, args, 5)
+		cmdCreateReport(args[0], args[1], args[2], args[3], args[4])
+	case "send-notify":
+		requireArgs(cmd, args, 2)
+		cmdSendNotify(args[0], args[1])
+	case "login-info":
+		requireArgs(cmd, args, 1)
+		cmdLoginInfo(args[0])
+	default:
+		fmt.Printf("未知命令: %s\n\n", cmd)
+		usage()
+	}
+}
+
+func requireArgs(cmd string, args []string, count int) {
+	if len(args) < count {
+		fmt.Printf("命令 %s 需要 %d 个参数，实际 %d 个\n", cmd, count, len(args))
+		os.Exit(1)
+	}
+}
+
+func parseIntArg(s string) int {
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		fmt.Printf("参数 %s 不是有效的整数\n", s)
+		os.Exit(1)
+	}
+	return n
+}
+
+// ============ 命令实现 ============
+
+func cmdAccessToken() {
+	token, err := app.GetAccessToken()
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("AccessToken: %s\n", token)
+}
+
+func cmdJSAPITicket() {
+	ticket, err := app.GetJSAPITicket()
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("JsapiTicket: %s\n", ticket)
+}
+
+func cmdConfig(nonceStr, timestamp, url string) {
+	config, err := app.GetConfig(nonceStr, timestamp, url)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("Config: %s\n", config)
+}
+
+func cmdAdmins() {
+	admins, err := app.GetAdmins()
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("管理员列表 (%d 人):\n", len(admins.Admins))
+	for _, a := range admins.Admins {
+		fmt.Printf("  userid=%s, sys_level=%d\n", a.UserId, a.SysLevel)
+	}
+}
+
+func cmdUserInfo(userid string) {
+	user, err := app.GetV2UserInfo(userid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	printJSON(user)
+}
+
+func cmdUserInfoByPhone(phone string) {
+	user, err := app.GetV2UserInfoByPhone(phone)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	printJSON(user)
+}
+
+func cmdUserInfoByUnionId(unionid string) {
+	user, err := app.GetV2UserInfoByUnionId(unionid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	printJSON(user)
+}
+
+func cmdUsersByName(name string) {
+	users, err := app.GetV2UsersByName(name)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("搜索结果 (%d 人):\n", len(users))
+	for _, u := range users {
+		fmt.Printf("  %s, %s, %s (%s/%s)\n", u.UserId, u.StaffCode, u.StaffName, u.Attrs.Org, u.Attrs.Job)
+	}
+}
+
+func cmdOrgName(userid string) {
+	name, err := app.GetOrgName(userid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("组织名称: %s\n", name)
+}
+
+func cmdJobName(userid string) {
+	name, err := app.GetJobName(userid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("岗位名称: %s\n", name)
+}
+
+func cmdDept(depid int) {
+	dept, err := app.GetV2Department(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	printJSON(dept)
+}
+
+func cmdDeptFullName(depid int) {
+	name, err := app.GetFullDeptName(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("部门全称: %s\n", name)
+}
+
+func cmdDeptUsers(depid int) {
+	users, err := app.GetDeptUsers(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("部门用户 (%d 人):\n", len(users))
+	for _, u := range users {
+		fmt.Printf("  %s, %s, %s\n", u.UserId, u.StaffCode, u.StaffName)
+	}
+}
+
+func cmdSubDepts(depid int) {
+	ids, err := app.GetSubDeptIds(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("子部门ID列表 (%d 个):\n", len(ids))
+	for _, id := range ids {
+		dept, err := app.GetV2Department(id)
+		if err != nil {
+			fmt.Printf("  %d (获取详情失败: %v)\n", id, err)
+			continue
+		}
+		fmt.Printf("  %d, %s\n", id, dept.Name)
+	}
+}
+
+func cmdReportUsers(userid string) {
+	report, err := app.GetV2ReportUsers(userid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+
+	totalDepts, totalUsers := 0, 0
+	var printDepts func(depts []*dingtalk.TDDV2ReportDept)
+	printDepts = func(depts []*dingtalk.TDDV2ReportDept) {
+		for _, dept := range depts {
+			totalDepts++
+			totalUsers += len(dept.Users)
+			printReportDept(dept, "")
+			printDepts(dept.Children)
+		}
+	}
+	printDepts(report.Departments)
+	fmt.Printf("\n共 %d 个子团队，%d 名员工\n", totalDepts, totalUsers)
+}
+
+func cmdReportTemplates(userid string) {
+	templates, err := app.GetV2ReportTemplateList(userid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("日志模板列表 (%d 个):\n", len(templates))
+	for _, t := range templates {
+		fmt.Printf("  name=%s, code=%s\n", t.Name, t.ReportCode)
+	}
+}
+
+func cmdReportTemplate(userid, templateName string) {
+	template, err := app.GetV2ReportTemplate(userid, templateName)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	printJSON(template)
+}
+
+func cmdReportList(userid, start, end string) {
+	list, err := app.GetV2ReportList(userid, start, end)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("日志列表 (%d 条):\n", len(list.DataList))
+	for i, item := range list.DataList {
+		fmt.Printf("  [%d] %s\n", i+1, item.TemplateName)
+	}
+}
+
+func cmdReportSimpleList(userid, start, end string) {
+	items, err := app.GetV2ReportSimpleList(userid, start, end)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("简要日志列表 (%d 条):\n", len(items))
+	for i, item := range items {
+		fmt.Printf("  [%d] id=%s, creator=%s\n", i+1, item.ReportID, item.CreatorID)
+	}
+}
+
+func cmdCreateReport(userid, templateId, toUserIds, textA, textB string) {
+	id, err := app.CreateV2Report(userid, templateId, toUserIds, textA, textB)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("创建成功, report_id=%s\n", id)
+}
+
+func cmdSendNotify(userid, msgJson string) {
+	taskId, err := app.SendWorkNotify(userid, msgJson)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("发送成功, task_id=%d\n", taskId)
+}
+
+func cmdLoginInfo(authcode string) {
+	info, err := app.GetV2LoginInfo(authcode)
+	if err != nil {
+		if strings.Contains(err.Error(), "不存在的临时授权码") {
+			fmt.Println("authcode 无效或已过期（预期错误）")
+			return
+		}
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("登录信息: %s\n", info)
+}
