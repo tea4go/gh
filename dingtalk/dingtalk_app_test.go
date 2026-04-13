@@ -58,16 +58,34 @@ func TestGetJSAPITicket(t *testing.T) {
 	t.Logf("JsapiTicket: %s", pkey)
 }
 
+func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
+	t.Logf("%s【%s】(共 %d 人)", indent, dept.DeptName, len(dept.Users))
+	for _, u := range dept.Users {
+		t.Logf("%s  %s, %s", indent, u.StaffCode, u.StaffName)
+	}
+	for _, child := range dept.Children {
+		printReportDept(t, child, indent+"  ")
+	}
+}
+
 func TestGetV2ReportUsers(t *testing.T) {
-	users, err := app.GetV2ReportUsers("201")
+	report, err := app.GetV2ReportUsers("201")
 	if err != nil {
 		t.Fatalf("获取报表用户出错: %v", err)
 	}
 
-	t.Logf("共 %d 名员工", len(users))
-	for _, u := range users {
-		t.Logf("%s, %s", u.StaffCode, u.StaffName)
+	totalDepts, totalUsers := 0, 0
+	var countDepts func(depts []*TDDV2ReportDept)
+	countDepts = func(depts []*TDDV2ReportDept) {
+		for _, dept := range depts {
+			totalDepts++
+			totalUsers += len(dept.Users)
+			printReportDept(t, dept, "")
+			countDepts(dept.Children)
+		}
 	}
+	countDepts(report.Departments)
+	t.Logf("共 %d 个子团队，%d 名员工", totalDepts, totalUsers)
 }
 
 func TestGetV2UserInfo(t *testing.T) {

@@ -140,18 +140,15 @@ type TDDUser struct {
 	Attrs     TDDUserAttr `json:"extattr"`
 }
 
+type TDDV2ReportDept struct {
+	DeptId   int                 `json:"dept_id"`
+	DeptName string              `json:"dept_name"`
+	Users    []*TDDV2User        `json:"users"`
+	Children []*TDDV2ReportDept  `json:"children"`
+}
+
 type TDDV2ReportUsers struct {
-	UserId     string `json:"userid"`
-	UnionId    string `json:"unionid"`
-	StaffCode  string `json:"job_number"`
-	StaffName  string `json:"name"`
-	Department []int  `json:"dept_id_list"`
-	Email      string `json:"email"`
-	Phone      string `json:"mobile"`
-	Remark     string `json:"remark"`
-	Avatar     string `json:"avatar"`
-	Attrs      TDDV2UserAttr
-	AttrText   string `json:"extension,omitempty"`
+	Departments []*TDDV2ReportDept `json:"departments"`
 }
 
 type TDeptLeader struct {
@@ -651,55 +648,124 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	return users, nil
 }
 
-// GetV2ReportUsers 获取用户所属部门的员工列表
-// 如果用户是部门主管，返回本部门所有员工（含主管）
-// 如果用户不是部门主管，返回本部门除主管之外的所有员工
-func (Self *TDingTalkApp) GetV2ReportUsers(userid string) ([]*TDDV2User, error) {
-	// 获取当前用户信息（包含部门列表和是否为主管）
+// GetSubDeptIds 获取部门的直属子部门ID列表
+// https://oapi.dingtalk.com/topapi/v2/department/listsub
+func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	ddurl := Self.ddurl + "/topapi/v2/department/listsub"
+	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.Param("access_token", Self.token.AccessToken)
+	req.Param("dept_id", strconv.Itoa(deptId))
+	logs.Debug("访问接口：%s (获取子部门列表, parent=%d)", ddurl, deptId)
+
+	var dingResp TDingTalkResponse
+	err = req.ToJSON(&dingResp)
+	if err != nil {
+		return nil, err
+	}
+
+	switch dingResp.ErrCode {
+	case 0:
+		var deptList []struct {
+			DeptId int `json:"dept_id"`
+		}
+		err = json.Unmarshal(dingResp.Result, &deptList)
+		if err != nil {
+			return nil, err
+		}
+		var ids []int
+		for _, d := range deptList {
+			ids = append(ids, d.DeptId)
+		}
+		return ids, nil
+	case 503:
+		Self.token = nil
+		return Self.GetSubDeptIds(deptId)
+	default:
+		return nil, errors.New(dingResp.ErrMsg)
+	}
+}
+
+// GetV2ReportUsers 获取用户所属部门的员工列表（按多级子部门分组）
+// 如果用户是部门主管，返回该部门下所有层级子团队的全部员工（含主管）
+// 如果用户不是部门主管，返回该部门下所有层级子团队除主管之外的员工
+func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, error) {
 	userInfo, err := Self.GetV2UserInfo(userid)
 	if err != nil {
 		return nil, err
 	}
 
-	// 构建 deptId -> isLeader 映射
 	leaderMap := make(map[int]bool)
 	for _, ld := range userInfo.LeaderInDept {
 		leaderMap[ld.DeptId] = ld.Leader
 	}
 
-	// 去重：同一个用户可能出现在多个部门
-	userMap := make(map[string]*TDDV2User)
+	report := &TDDV2ReportUsers{}
 
 	for _, deptId := range userInfo.Department {
 		isLeader := leaderMap[deptId]
+		children, err := Self.buildReportDeptTree(deptId, isLeader)
+		if err != nil {
+			return nil, err
+		}
+		report.Departments = append(report.Departments, children...)
+	}
 
-		deptUsers, err := Self.GetDeptUsers(deptId)
+	return report, nil
+}
+
+// buildReportDeptTree 递归构建子部门树
+func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) ([]*TDDV2ReportDept, error) {
+	subDeptIds, err := Self.GetSubDeptIds(parentDeptId)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*TDDV2ReportDept
+	for _, subDeptId := range subDeptIds {
+		deptInfo, err := Self.GetV2Department(subDeptId)
 		if err != nil {
 			return nil, err
 		}
 
+		deptUsers, err := Self.GetDeptUsers(subDeptId)
+		if err != nil {
+			return nil, err
+		}
+
+		var users []*TDDV2User
 		if isLeader {
-			// 主管：返回本部门所有员工
-			for _, u := range deptUsers {
-				userMap[u.UserId] = u
-			}
+			users = deptUsers
 		} else {
-			// 非主管：返回本部门除主管之外的员工
 			for _, u := range deptUsers {
-				if !Self.isLeaderInDept(u, deptId) {
-					userMap[u.UserId] = u
+				if !Self.isLeaderInDept(u, subDeptId) {
+					users = append(users, u)
 				}
 			}
 		}
+
+		sort.Slice(users, func(i, j int) bool {
+			return users[i].StaffCode < users[j].StaffCode
+		})
+
+		// 递归获取下一级子部门
+		children, err := Self.buildReportDeptTree(subDeptId, isLeader)
+		if err != nil {
+			return nil, err
+		}
+
+		result = append(result, &TDDV2ReportDept{
+			DeptId:   subDeptId,
+			DeptName: deptInfo.Name,
+			Users:    users,
+			Children: children,
+		})
 	}
 
-	var result []*TDDV2User
-	for _, u := range userMap {
-		result = append(result, u)
-	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].StaffCode < result[j].StaffCode
-	})
 	return result, nil
 }
 
