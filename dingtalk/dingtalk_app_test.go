@@ -61,7 +61,7 @@ func TestGetJSAPITicket(t *testing.T) {
 func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
 	t.Logf("%s【%s】(共 %d 人)", indent, dept.DeptName, len(dept.Users))
 	for _, u := range dept.Users {
-		t.Logf("%s  %s, %s", indent, u.StaffCode, u.StaffName)
+		t.Logf("%s  %s, %s, %s", indent, u.UserId, u.StaffCode, u.StaffName)
 	}
 	for _, child := range dept.Children {
 		printReportDept(t, child, indent+"  ")
