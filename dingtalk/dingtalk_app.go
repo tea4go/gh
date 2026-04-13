@@ -688,6 +688,7 @@ func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
 // 如果用户是部门主管，返回该部门及所有层级子团队的全部员工（含主管）
 // 如果用户不是部门主管，返回该部门及所有层级子团队除主管之外的员工
 func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, error) {
+	logs.Info("获取用户信息 - %s", userid)
 	userInfo, err := Self.GetV2UserInfo(userid)
 	if err != nil {
 		return nil, err
@@ -704,6 +705,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 		isLeader := leaderMap[deptId]
 
 		// 获取部门本身的信息和员工（同级）
+		logs.Info("获取部门信息 - %d", deptId)
 		deptInfo, err := Self.GetV2Department(deptId)
 		if err != nil {
 			return nil, err
@@ -713,6 +715,8 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 		if isFilteredDept(deptInfo.Name) {
 			continue
 		}
+
+		logs.Info("获取部门员工 - %s (%d)", deptInfo.Name, deptId)
 		deptUsers, err := Self.GetDeptUsers(deptId)
 		if err != nil {
 			return nil, err
@@ -729,7 +733,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 				}
 			}
 		}
-
+		logs.Info("获取部门员工 - %s (%d) - 共 %d 人(不包含主管以及子部门)", deptInfo.Name, deptId, len(users))
 		sort.Slice(users, func(i, j int) bool {
 			return users[i].StaffCode < users[j].StaffCode
 		})
@@ -832,7 +836,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
-	//logs.Debug("访问接口：%s (获取用户详情)", ddurl)
+	logs.Debug("访问接口：%s (获取用户详情)", ddurl)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -855,6 +859,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 			}
 		}
 		info.AttrText = ""
+		logs.Debug("==> %s - %s", info.StaffCode, info.StaffName)
 		return &info, nil
 	case 503:
 		Self.token = nil
@@ -891,6 +896,7 @@ func (Self *TDingTalkApp) GetV2Department(depid int) (*TDeptInfo, error) {
 		if err != nil {
 			return nil, err
 		}
+		logs.Debug("==> %d - %s", info.Id, info.Name)
 		return &info, nil
 	case 503:
 		Self.token = nil
