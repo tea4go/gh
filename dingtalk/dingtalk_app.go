@@ -140,17 +140,23 @@ type TDDUser struct {
 }
 
 type TDDV2User struct {
-	UserId     string `json:"userid"`
-	UnionId    string `json:"unionid"`
-	StaffCode  string `json:"job_number"`
-	StaffName  string `json:"name"`
-	Department string `json:"department"`
-	Email      string `json:"email"`
-	Phone      string `json:"mobile"`
-	Remark     string `json:"remark"`
-	Avatar     string `json:"avatar"`
+	UserId     string   `json:"userid"`
+	UnionId    string   `json:"unionid"`
+	StaffCode  string   `json:"job_number"`
+	StaffName  string   `json:"name"`
+	Department []string `json:"department"`
+	Email      string   `json:"email"`
+	Phone      string   `json:"mobile"`
+	Remark     string   `json:"remark"`
+	Avatar     string   `json:"avatar"`
 	Attrs      TDDV2UserAttr
 	AttrText   string `json:"extension,omitempty"`
+}
+
+func NewTDDV2User() *TDDV2User {
+	re := &TDDV2User{}
+	re.Department = []string{}
+	return re
 }
 
 type TDDV2UserAttr struct {

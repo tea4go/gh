@@ -8,6 +8,7 @@ import (
 	"time"
 
 	logs "github.com/tea4go/gh/log4go"
+	"gopkg.in/ffmt.v1"
 )
 
 var app *TDingTalkApp
@@ -58,10 +59,13 @@ func TestGetJSAPITicket(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
-	_, err := app.GetV2UserInfo("201")
+	user, err := app.GetV2UserInfo("201")
 	if err != nil {
 		t.Fatalf("获取用户信息出错: %v", err)
 	}
+
+	t.Logf("用户信息: %+v", user)
+	ffmt.Puts(user)
 }
 
 func TestGetV2Department(t *testing.T) {
