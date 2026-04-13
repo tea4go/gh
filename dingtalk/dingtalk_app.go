@@ -715,6 +715,10 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 			return nil, err
 		}
 
+		// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
+		if isFilteredDept(deptInfo.Name) {
+			continue
+		}
 		deptUsers, err := Self.GetDeptUsers(deptId)
 		if err != nil {
 			return nil, err
@@ -767,6 +771,10 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			return nil, err
 		}
 
+			// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
+			if isFilteredDept(deptInfo.Name) {
+				continue
+			}
 		deptUsers, err := Self.GetDeptUsers(subDeptId)
 		if err != nil {
 			return nil, err
@@ -803,6 +811,10 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 	return result, nil
 }
 
+// isFilteredDept 判断部门是否需要过滤（以"_HRBP"结尾或包含"钉钉合作"）
+func isFilteredDept(deptName string) bool {
+	return strings.HasSuffix(deptName, "_HRBP") || strings.Contains(deptName, "钉钉合作")
+}
 // isLeaderInDept 判断用户在指定部门是否为主管
 func (Self *TDingTalkApp) isLeaderInDept(user *TDDV2User, deptId int) bool {
 	for _, ld := range user.LeaderInDept {
