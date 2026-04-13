@@ -675,6 +675,7 @@ func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
 		for _, d := range deptList {
 			ids = append(ids, d.DeptId)
 		}
+		logs.Debug("==> %d (共 %d 个子部门)", deptId, len(ids))
 		return ids, nil
 	case 503:
 		Self.token = nil
@@ -713,6 +714,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 
 		// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
 		if isFilteredDept(deptInfo.Name) {
+			logs.Info("获取部门信息 - %d (跳过)", deptId)
 			continue
 		}
 
@@ -757,6 +759,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 
 // buildReportDeptTree 递归构建子部门树
 func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) ([]*TDDV2ReportDept, error) {
+	logs.Info("获取子部门员工 - %d (主管=%v)", parentDeptId, isLeader)
 	subDeptIds, err := Self.GetSubDeptIds(parentDeptId)
 	if err != nil {
 		return nil, err
@@ -764,6 +767,7 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 
 	var result []*TDDV2ReportDept
 	for _, subDeptId := range subDeptIds {
+		logs.Info("获取部门信息 - %d", subDeptId)
 		deptInfo, err := Self.GetV2Department(subDeptId)
 		if err != nil {
 			return nil, err
@@ -771,8 +775,11 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 
 		// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
 		if isFilteredDept(deptInfo.Name) {
+			logs.Info("获取部门信息 - %d (跳过)", subDeptId)
 			continue
 		}
+
+		logs.Info("获取部门员工 - %s (%d)", deptInfo.Name, subDeptId)
 		deptUsers, err := Self.GetDeptUsers(subDeptId)
 		if err != nil {
 			return nil, err
@@ -793,6 +800,7 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			return users[i].StaffCode < users[j].StaffCode
 		})
 
+		logs.Info("获取部门员工 - %s (%d) - 共 %d 人(不包含主管以及子部门)", deptInfo.Name, subDeptId, len(users))
 		children, err := Self.buildReportDeptTree(subDeptId, isLeader)
 		if err != nil {
 			return nil, err
@@ -836,7 +844,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
-	logs.Debug("访问接口：%s (获取用户详情)", ddurl)
+	//logs.Debug("访问接口：%s (获取用户详情)", ddurl)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -859,7 +867,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 			}
 		}
 		info.AttrText = ""
-		logs.Debug("==> %s - %s", info.StaffCode, info.StaffName)
+		//logs.Debug("==> %s - %s", info.StaffCode, info.StaffName)
 		return &info, nil
 	case 503:
 		Self.token = nil
