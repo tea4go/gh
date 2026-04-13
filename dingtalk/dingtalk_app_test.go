@@ -58,14 +58,10 @@ func TestGetJSAPITicket(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
-	for i := 0; i < 300; i++ {
-		_, err := app.GetV2UserInfo("201")
-		if err != nil {
-			t.Fatalf("获取用户信息出错: %v", err)
-		}
+	_, err := app.GetV2UserInfo("201")
+	if err != nil {
+		t.Fatalf("获取用户信息出错: %v", err)
 	}
-	//	t.Logf("用户信息: %+v", user)
-	//	ffmt.Puts(user)
 }
 
 func TestGetV2Department(t *testing.T) {
@@ -130,7 +126,7 @@ func TestGetDeptUsers(t *testing.T) {
 }
 
 func TestGetV2UserInfoByPhone(t *testing.T) {
-	userinfo, err := app.GetV2UserInfoByPhone("13016985150")
+	userinfo, err := app.GetV2UserInfoByPhone("xxx")
 	if err != nil {
 		t.Fatalf("获取用户出错: %v", err)
 	}

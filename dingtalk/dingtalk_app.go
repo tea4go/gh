@@ -140,16 +140,17 @@ type TDDUser struct {
 }
 
 type TDDV2User struct {
-	UserId    string `json:"userid"`
-	UnionId   string `json:"unionid"`
-	StaffCode string `json:"job_number"`
-	StaffName string `json:"name"`
-	Email     string `json:"email"`
-	Phone     string `json:"mobile"`
-	Remark    string `json:"remark"`
-	Avatar    string `json:"avatar"`
-	Attrs     TDDV2UserAttr
-	AttrText  string `json:"extension,omitempty"`
+	UserId     string `json:"userid"`
+	UnionId    string `json:"unionid"`
+	StaffCode  string `json:"job_number"`
+	StaffName  string `json:"name"`
+	Department string `json:"department"`
+	Email      string `json:"email"`
+	Phone      string `json:"mobile"`
+	Remark     string `json:"remark"`
+	Avatar     string `json:"avatar"`
+	Attrs      TDDV2UserAttr
+	AttrText   string `json:"extension,omitempty"`
 }
 
 type TDDV2UserAttr struct {
@@ -909,8 +910,8 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 				return allItems, nil
 			}
 			cursor = page.NextCursor
-			case 503:
-				Self.token = nil
+		case 503:
+			Self.token = nil
 			_, err = Self.GetAccessToken()
 			if err != nil {
 				return nil, err
