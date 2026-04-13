@@ -141,10 +141,10 @@ type TDDUser struct {
 }
 
 type TDDV2ReportDept struct {
-	DeptId   int                 `json:"dept_id"`
-	DeptName string              `json:"dept_name"`
-	Users    []*TDDV2User        `json:"users"`
-	Children []*TDDV2ReportDept  `json:"children"`
+	DeptId   int                `json:"dept_id"`
+	DeptName string             `json:"dept_name"`
+	Users    []*TDDV2User       `json:"users"`
+	Children []*TDDV2ReportDept `json:"children"`
 }
 
 type TDDV2ReportUsers struct {
@@ -157,24 +157,18 @@ type TDeptLeader struct {
 }
 
 type TDDV2User struct {
-	UserId       string         `json:"userid"`
-	UnionId      string         `json:"unionid"`
-	StaffCode    string         `json:"job_number"`
-	StaffName    string         `json:"name"`
-	Department   []int          `json:"dept_id_list"`
-	LeaderInDept []TDeptLeader  `json:"leader_in_dept"`
-	Email        string         `json:"email"`
-	Phone        string         `json:"mobile"`
-	Remark       string         `json:"remark"`
-	Avatar       string         `json:"avatar"`
+	UserId       string        `json:"userid"`
+	UnionId      string        `json:"unionid"`
+	StaffCode    string        `json:"job_number"`
+	StaffName    string        `json:"name"`
+	Department   []int         `json:"dept_id_list"`
+	LeaderInDept []TDeptLeader `json:"leader_in_dept"`
+	Email        string        `json:"email"`
+	Phone        string        `json:"mobile"`
+	Remark       string        `json:"remark"`
+	Avatar       string        `json:"avatar"`
 	Attrs        TDDV2UserAttr
-	AttrText     string         `json:"extension,omitempty"`
-}
-
-func NewTDDV2User() *TDDV2User {
-	re := &TDDV2User{}
-	re.Department = []int{}
-	return re
+	AttrText     string `json:"extension,omitempty"`
 }
 
 type TDDV2UserAttr struct {
@@ -771,10 +765,10 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			return nil, err
 		}
 
-			// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
-			if isFilteredDept(deptInfo.Name) {
-				continue
-			}
+		// 过滤以"_HRBP"结尾或包含"钉钉合作"的部门
+		if isFilteredDept(deptInfo.Name) {
+			continue
+		}
 		deptUsers, err := Self.GetDeptUsers(subDeptId)
 		if err != nil {
 			return nil, err
@@ -815,6 +809,7 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 func isFilteredDept(deptName string) bool {
 	return strings.HasSuffix(deptName, "_HRBP") || strings.Contains(deptName, "钉钉合作")
 }
+
 // isLeaderInDept 判断用户在指定部门是否为主管
 func (Self *TDingTalkApp) isLeaderInDept(user *TDDV2User, deptId int) bool {
 	for _, ld := range user.LeaderInDept {

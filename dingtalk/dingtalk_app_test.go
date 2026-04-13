@@ -89,7 +89,7 @@ func TestGetV2ReportUsers(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
-	user, err := app.GetV2UserInfo("5690")
+	user, err := app.GetV2UserInfo("1795")
 	if err != nil {
 		t.Fatalf("获取用户信息出错: %v", err)
 	}
