@@ -757,7 +757,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 	return report, nil
 }
 
-// buildReportDeptTree 递归构建子部门树
+// buildReportDeptTree 构建直属子部门列表（仅下一级）
 func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) ([]*TDDV2ReportDept, error) {
 	logs.Info("获取子部门员工 - %d (主管=%v)", parentDeptId, isLeader)
 	subDeptIds, err := Self.GetSubDeptIds(parentDeptId)
@@ -767,7 +767,6 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 
 	var result []*TDDV2ReportDept
 	for _, subDeptId := range subDeptIds {
-		logs.Info("获取部门信息 - %d", subDeptId)
 		deptInfo, err := Self.GetV2Department(subDeptId)
 		if err != nil {
 			return nil, err
@@ -779,7 +778,6 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			continue
 		}
 
-		logs.Info("获取部门员工 - %s (%d)", deptInfo.Name, subDeptId)
 		deptUsers, err := Self.GetDeptUsers(subDeptId)
 		if err != nil {
 			return nil, err
@@ -800,17 +798,10 @@ func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) (
 			return users[i].StaffCode < users[j].StaffCode
 		})
 
-		logs.Info("获取部门员工 - %s (%d) - 共 %d 人(不包含主管以及子部门)", deptInfo.Name, subDeptId, len(users))
-		children, err := Self.buildReportDeptTree(subDeptId, isLeader)
-		if err != nil {
-			return nil, err
-		}
-
 		result = append(result, &TDDV2ReportDept{
 			DeptId:   subDeptId,
 			DeptName: deptInfo.Name,
 			Users:    users,
-			Children: children,
 		})
 	}
 
