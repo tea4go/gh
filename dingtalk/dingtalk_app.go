@@ -139,23 +139,37 @@ type TDDUser struct {
 	Attrs     TDDUserAttr `json:"extattr"`
 }
 
+type TDDV2ReportUsers struct {
+	UserId     string `json:"userid"`
+	UnionId    string `json:"unionid"`
+	StaffCode  string `json:"job_number"`
+	StaffName  string `json:"name"`
+	Department []int  `json:"dept_id_list"`
+	Email      string `json:"email"`
+	Phone      string `json:"mobile"`
+	Remark     string `json:"remark"`
+	Avatar     string `json:"avatar"`
+	Attrs      TDDV2UserAttr
+	AttrText   string `json:"extension,omitempty"`
+}
+
 type TDDV2User struct {
-	UserId     string   `json:"userid"`
-	UnionId    string   `json:"unionid"`
-	StaffCode  string   `json:"job_number"`
-	StaffName  string   `json:"name"`
-	Department []string `json:"department"`
-	Email      string   `json:"email"`
-	Phone      string   `json:"mobile"`
-	Remark     string   `json:"remark"`
-	Avatar     string   `json:"avatar"`
+	UserId     string `json:"userid"`
+	UnionId    string `json:"unionid"`
+	StaffCode  string `json:"job_number"`
+	StaffName  string `json:"name"`
+	Department []int  `json:"dept_id_list"`
+	Email      string `json:"email"`
+	Phone      string `json:"mobile"`
+	Remark     string `json:"remark"`
+	Avatar     string `json:"avatar"`
 	Attrs      TDDV2UserAttr
 	AttrText   string `json:"extension,omitempty"`
 }
 
 func NewTDDV2User() *TDDV2User {
 	re := &TDDV2User{}
-	re.Department = []string{}
+	re.Department = []int{}
 	return re
 }
 
@@ -628,6 +642,10 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 		users = append(users, info)
 	}
 	return users, nil
+}
+
+func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, error) {
+	return nil, nil
 }
 
 // GetV2UserInfo 根据 UserID 获取用户信息

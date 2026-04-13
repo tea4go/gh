@@ -58,6 +58,15 @@ func TestGetJSAPITicket(t *testing.T) {
 	t.Logf("JsapiTicket: %s", pkey)
 }
 
+func TestGetV2ReportUsers(t *testing.T) {
+	users, err := app.GetV2UserInfo("201")
+	if err != nil {
+		t.Fatalf("获取用户信息出错: %v", err)
+	}
+
+	ffmt.Puts(users)
+}
+
 func TestGetV2UserInfo(t *testing.T) {
 	user, err := app.GetV2UserInfo("201")
 	if err != nil {
