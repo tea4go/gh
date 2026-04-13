@@ -753,6 +753,45 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 	return report, nil
 }
 
+// buildReportDeptTree 递归构建子部门树
+func (Self *TDingTalkApp) buildReportDeptTree(parentDeptId int, isLeader bool) ([]*TDDV2ReportDept, error) {
+	subDeptIds, err := Self.GetSubDeptIds(parentDeptId)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*TDDV2ReportDept
+	for _, subDeptId := range subDeptIds {
+		deptInfo, err := Self.GetV2Department(subDeptId)
+		if err != nil {
+			return nil, err
+		}
+
+		deptUsers, err := Self.GetDeptUsers(subDeptId)
+		if err != nil {
+			return nil, err
+		}
+
+		var users []*TDDV2User
+		if isLeader {
+			users = deptUsers
+		} else {
+			for _, u := range deptUsers {
+				if !Self.isLeaderInDept(u, subDeptId) {
+					users = append(users, u)
+				}
+			}
+		}
+
+		sort.Slice(users, func(i, j int) bool {
+			return users[i].StaffCode < users[j].StaffCode
+		})
+
+		children, err := Self.buildReportDeptTree(subDeptId, isLeader)
+		if err != nil {
+			return nil, err
+		}
+
 		result = append(result, &TDDV2ReportDept{
 			DeptId:   subDeptId,
 			DeptName: deptInfo.Name,
