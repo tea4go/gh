@@ -69,7 +69,7 @@ func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
 }
 
 func TestGetV2ReportUsers(t *testing.T) {
-	report, err := app.GetV2ReportUsers("1795")
+	report, err := app.GetV2ReportUsers("392")
 	if err != nil {
 		t.Fatalf("获取报表用户出错: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestGetDeptUsers(t *testing.T) {
 }
 
 func TestGetV2UserInfoByPhone(t *testing.T) {
-	userinfo, err := app.GetV2UserInfoByPhone("xxx")
+	userinfo, err := app.GetV2UserInfoByPhone("18008445233")
 	if err != nil {
 		t.Fatalf("获取用户出错: %v", err)
 	}

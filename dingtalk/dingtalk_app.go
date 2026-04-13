@@ -885,7 +885,7 @@ func (Self *TDingTalkApp) GetV2Department(depid int) (*TDeptInfo, error) {
 	}
 	switch dingResp.ErrCode {
 	case 0:
-		logs.Debug("返回数据：%s", string(dingResp.Result))
+		//logs.Debug("返回数据：%s", string(dingResp.Result))
 		var info TDeptInfo
 		err = json.Unmarshal(dingResp.Result, &info)
 		if err != nil {
