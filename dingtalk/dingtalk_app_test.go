@@ -59,12 +59,15 @@ func TestGetJSAPITicket(t *testing.T) {
 }
 
 func TestGetV2ReportUsers(t *testing.T) {
-	users, err := app.GetV2UserInfo("201")
+	users, err := app.GetV2ReportUsers("201")
 	if err != nil {
-		t.Fatalf("获取用户信息出错: %v", err)
+		t.Fatalf("获取报表用户出错: %v", err)
 	}
 
-	ffmt.Puts(users)
+	t.Logf("共 %d 名员工", len(users))
+	for _, u := range users {
+		t.Logf("%s, %s", u.StaffCode, u.StaffName)
+	}
 }
 
 func TestGetV2UserInfo(t *testing.T) {

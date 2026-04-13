@@ -153,18 +153,24 @@ type TDDV2ReportUsers struct {
 	AttrText   string `json:"extension,omitempty"`
 }
 
+type TDeptLeader struct {
+	DeptId int  `json:"dept_id"`
+	Leader bool `json:"leader"`
+}
+
 type TDDV2User struct {
-	UserId     string `json:"userid"`
-	UnionId    string `json:"unionid"`
-	StaffCode  string `json:"job_number"`
-	StaffName  string `json:"name"`
-	Department []int  `json:"dept_id_list"`
-	Email      string `json:"email"`
-	Phone      string `json:"mobile"`
-	Remark     string `json:"remark"`
-	Avatar     string `json:"avatar"`
-	Attrs      TDDV2UserAttr
-	AttrText   string `json:"extension,omitempty"`
+	UserId       string         `json:"userid"`
+	UnionId      string         `json:"unionid"`
+	StaffCode    string         `json:"job_number"`
+	StaffName    string         `json:"name"`
+	Department   []int          `json:"dept_id_list"`
+	LeaderInDept []TDeptLeader  `json:"leader_in_dept"`
+	Email        string         `json:"email"`
+	Phone        string         `json:"mobile"`
+	Remark       string         `json:"remark"`
+	Avatar       string         `json:"avatar"`
+	Attrs        TDDV2UserAttr
+	AttrText     string         `json:"extension,omitempty"`
 }
 
 func NewTDDV2User() *TDDV2User {
@@ -644,8 +650,63 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	return users, nil
 }
 
-func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, error) {
-	return nil, nil
+// GetV2ReportUsers 获取用户所属部门的员工列表
+// 如果用户是部门主管，返回本部门所有员工（含主管）
+// 如果用户不是部门主管，返回本部门除主管之外的所有员工
+func (Self *TDingTalkApp) GetV2ReportUsers(userid string) ([]*TDDV2User, error) {
+	// 获取当前用户信息（包含部门列表和是否为主管）
+	userInfo, err := Self.GetV2UserInfo(userid)
+	if err != nil {
+		return nil, err
+	}
+
+	// 构建 deptId -> isLeader 映射
+	leaderMap := make(map[int]bool)
+	for _, ld := range userInfo.LeaderInDept {
+		leaderMap[ld.DeptId] = ld.Leader
+	}
+
+	// 去重：同一个用户可能出现在多个部门
+	userMap := make(map[string]*TDDV2User)
+
+	for _, deptId := range userInfo.Department {
+		isLeader := leaderMap[deptId]
+
+		deptUsers, err := Self.GetDeptUsers(deptId)
+		if err != nil {
+			return nil, err
+		}
+
+		if isLeader {
+			// 主管：返回本部门所有员工
+			for _, u := range deptUsers {
+				userMap[u.UserId] = u
+			}
+		} else {
+			// 非主管：返回本部门除主管之外的员工
+			for _, u := range deptUsers {
+				if !Self.isLeaderInDept(u, deptId) {
+					userMap[u.UserId] = u
+				}
+			}
+		}
+	}
+
+	var result []*TDDV2User
+	for _, u := range userMap {
+		result = append(result, u)
+	}
+	return result, nil
+}
+
+// isLeaderInDept 判断用户在指定部门是否为主管
+func (Self *TDingTalkApp) isLeaderInDept(user *TDDV2User, deptId int) bool {
+	for _, ld := range user.LeaderInDept {
+		if ld.DeptId == deptId {
+			return ld.Leader
+		}
+	}
+	return false
 }
 
 // GetV2UserInfo 根据 UserID 获取用户信息
