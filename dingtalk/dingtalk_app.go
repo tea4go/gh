@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -696,6 +697,9 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) ([]*TDDV2User, error) 
 	for _, u := range userMap {
 		result = append(result, u)
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].StaffCode < result[j].StaffCode
+	})
 	return result, nil
 }
 
