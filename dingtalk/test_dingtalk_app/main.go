@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	flag "github.com/spf13/pflag"
 	dingtalk "github.com/tea4go/gh/dingtalk"
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/network"
@@ -34,6 +35,8 @@ func initApp() {
 		fmt.Println("  DINGTALK_Agent_ID     - 应用 AgentId（可选，默认 615063230）")
 		os.Exit(1)
 	}
+	//需要解析后，传的参数才会赋值，这才是为何是返回指针的原因
+	flag.Parse()
 
 	// 标准程序块
 	network.SetAppVersion(appName, appVer, IsBeta, BuildTime) //设置应用版本号，便于自动更新
@@ -74,7 +77,7 @@ func usage() {
   config <nonceStr> <timestamp> <url>           获取前端鉴权配置
   admins                                        获取管理员列表
   user <userid>                                 根据userid获取用户详情
-  user-by-phone <phone>                         根���手机号获取用户详情
+  user-by-phone <phone>                         查手机号获取用户详情
   user-by-unionid <unionid>                     根据unionid获取用户详情
   users-by-name <name>                          根据姓名搜索用户列表
   org-name <userid>                             获取用户所属组织名称
@@ -88,10 +91,8 @@ func usage() {
   report-template <userid> <template_name>      获取指定日志模板详情
   report-list <userid> <start> <end>            获取用户日志列表（详情）
   report-simple-list <userid> <start> <end>     获取用户日志列表（简要）
-  create-report <userid> <template_id> <to_ids> <text_a> <text_b>
-                                                创建日志
-  send-notify <userid> <msg_json>               发送工作通知
-  login-info <authcode>                         通过临时授权码获取登录信息`)
+  create-report <userid> <template_id> <to_ids> <text_a> <text_b> 创建日志
+  send-notify <userid> <msg_json>               发送工作通知`)
 }
 
 func main() {
@@ -145,7 +146,7 @@ func main() {
 	case "sub-depts": // sub-depts <deptid> 获取子部门列表
 		requireArgs(cmd, args, 1)
 		cmdSubDepts(parseIntArg(args[0])) /*OK*/
-	case "report-users": // report-users <userid> 获取用户所属部门的员工列表（按子部门分组）
+	case "report-users": // <userid> 获取用户所属部门的员工列表（按子部门分组）
 		requireArgs(cmd, args, 1)
 		cmdReportUsers(args[0])
 	case "report-templates": // report-templates <userid> 获取用户可用的日志模板列表
@@ -166,9 +167,6 @@ func main() {
 	case "send-notify": // send-notify <userid> <msg_json> 发送工作通知
 		requireArgs(cmd, args, 2)
 		cmdSendNotify(args[0], args[1])
-	case "login-info": // login-info <authcode> 通过临时授权码获取登录信息
-		requireArgs(cmd, args, 1)
-		cmdLoginInfo(args[0])
 	default:
 		fmt.Printf("未知命令: %s\n\n", cmd)
 		usage()
