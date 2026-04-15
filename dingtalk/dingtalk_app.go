@@ -88,7 +88,7 @@ type TDeptInfo struct {
 	PId         int      `json:"parent_id"`
 	Name        string   `json:"name"`
 	MemberCount int      `json:"member_count"`
-	MUserIds    []string `json:"dept_manager_userid_list"` //部门的主管列表，取值为由主管的userid组成的字符串，不同的userid使用“\|”符号进行分割
+	MUserIds    []string `json:"dept_manager_userid_list"` //部门的主管列表
 	OwnerUserId string   `json:"org_dept_owner"`           //企业群群主
 }
 
@@ -722,7 +722,7 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 			continue
 		}
 
-		logs.Info("获取部门 %d 信息 - %s", deptId, deptInfo.Name)
+		logs.Info("获取部门 %d 信息 - %s, 主管=%v", deptId, deptInfo.Name, deptInfo.MUserIds)
 
 		dept_users := &TDDV2ReportDept{}
 		dept_users.DeptId = deptId
@@ -741,6 +741,31 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 		if err != nil {
 			return nil, err
 		}
+
+		managerUserIDs := map[string]struct{}{}
+		for _, id := range deptInfo.MUserIds {
+			if id == "" {
+				continue
+			}
+			managerUserIDs[id] = struct{}{}
+		}
+		if len(managerUserIDs) > 0 {
+			_, isManager := managerUserIDs[userid]
+			if !isManager {
+				filtered := make([]*TDDV2User, 0, len(subDeptUsers))
+				for _, u := range subDeptUsers {
+					if u == nil || u.UserId == "" {
+						continue
+					}
+					if _, ok := managerUserIDs[u.UserId]; ok {
+						continue
+					}
+					filtered = append(filtered, u)
+				}
+				subDeptUsers = filtered
+			}
+		}
+
 		logs.Info("获取部门 %d 子部门员工 - %d 人", deptId, len(subDeptUsers))
 		dept_users.Users = subDeptUsers
 
