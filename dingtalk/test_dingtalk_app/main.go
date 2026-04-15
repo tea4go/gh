@@ -20,23 +20,25 @@ var IsBeta string
 var BuildTime string
 
 var app *dingtalk.TDingTalkApp
+var clientID string
+var clientSecret string
+var corpId string
+var agentId string
 
 func initApp() {
-	clientID := os.Getenv("DINGTALK_Client_ID")
-	clientSecret := os.Getenv("DINGTALK_Client_Secret")
-	corpId := os.Getenv("DINGTALK_Corp_ID")
-	agentId := os.Getenv("DINGTALK_Agent_ID")
-
+	if agentId == "" {
+		agentId = "615063230"
+	}
 	if clientID == "" || clientSecret == "" {
 		fmt.Println("请设置环境变量：")
 		fmt.Println("  DINGTALK_Client_ID    - 应用的 AppKey")
 		fmt.Println("  DINGTALK_Client_Secret - 应用的 AppSecret")
 		fmt.Println("  DINGTALK_Corp_ID      - 企业 CorpId（可选）")
 		fmt.Println("  DINGTALK_Agent_ID     - 应用 AgentId（可选，默认 615063230）")
+		fmt.Println("或通过命令行参数指定：")
+		fmt.Println("  --client-id / --client-secret / --corp-id / --agent-id")
 		os.Exit(1)
 	}
-	//需要解析后，传的参数才会赋值，这才是为何是返回指针的原因
-	flag.Parse()
 
 	// 标准程序块
 	network.SetAppVersion(appName, appVer, IsBeta, BuildTime) //设置应用版本号，便于自动更新
@@ -57,12 +59,26 @@ func printJSON(v interface{}) {
 }
 
 func printReportDept(dept *dingtalk.TDDV2ReportDept, indent string) {
-	fmt.Printf("%s【%s】(共 %d 人)\n", indent, dept.DeptName, len(dept.Users))
+	deptName := dept.DeptName
+	if deptName == "" && dept.DeptId > 0 {
+		dep, err := app.GetV2Department(dept.DeptId)
+		if err == nil && dep != nil && dep.Name != "" {
+			deptName = dep.Name
+		}
+	}
+	if deptName == "" {
+		deptName = "-"
+	}
+
+	fmt.Printf("%s【%s】(dept=%d, 共 %d 人)\n", indent, deptName, dept.DeptId, len(dept.Users))
 	for _, u := range dept.Users {
 		fmt.Printf("%s  %s, %s, %s\n", indent, u.UserId, u.StaffCode, u.StaffName)
 	}
-	for _, child := range dept.Children {
-		printReportDept(child, indent+"  ")
+	if len(dept.SubDepts) > 0 {
+		fmt.Printf("%s  子部门(%d):\n", indent, len(dept.SubDepts))
+		for _, child := range dept.SubDepts {
+			fmt.Printf("%s    %s (%d, parent=%d)\n", indent, child.Name, child.DeptId, child.ParentId)
+		}
 	}
 }
 
@@ -96,15 +112,27 @@ func usage() {
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	clientID = os.Getenv("DINGTALK_Client_ID")
+	clientSecret = os.Getenv("DINGTALK_Client_Secret")
+	corpId = os.Getenv("DINGTALK_Corp_ID")
+	agentId = os.Getenv("DINGTALK_Agent_ID")
+
+	flag.StringVar(&clientID, "client-id", clientID, "DingTalk Client ID (AppKey)")
+	flag.StringVar(&clientSecret, "client-secret", clientSecret, "DingTalk Client Secret (AppSecret)")
+	flag.StringVar(&corpId, "corp-id", corpId, "DingTalk Corp ID")
+	flag.StringVar(&agentId, "agent-id", agentId, "DingTalk Agent ID")
+
+	flag.Parse()
+	positionalArgs := flag.Args()
+	if len(positionalArgs) < 1 {
 		usage()
 		return
 	}
 
 	initApp()
 
-	cmd := os.Args[1]
-	args := os.Args[2:]
+	cmd := positionalArgs[0]
+	args := positionalArgs[1:]
 
 	switch cmd {
 	case "access-token": // access-token 获取 AccessToken
@@ -353,16 +381,11 @@ func cmdReportUsers(userid string) {
 	}
 
 	totalDepts, totalUsers := 0, 0
-	var printDepts func(depts []*dingtalk.TDDV2ReportDept)
-	printDepts = func(depts []*dingtalk.TDDV2ReportDept) {
-		for _, dept := range depts {
-			totalDepts++
-			totalUsers += len(dept.Users)
-			printReportDept(dept, "")
-			printDepts(dept.Children)
-		}
+	for _, dept := range report.Departments {
+		totalDepts++
+		totalUsers += len(dept.Users)
+		printReportDept(dept, "")
 	}
-	printDepts(report.Departments)
 	fmt.Printf("\n共 %d 个子团队，%d 名员工\n", totalDepts, totalUsers)
 }
 
