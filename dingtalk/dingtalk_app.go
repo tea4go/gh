@@ -709,11 +709,6 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 	}
 	logs.Info("当前用户 %s 所属部门: %v", userid, userInfo.Department)
 
-	leaderMap := make(map[int]bool)
-	for _, ld := range userInfo.LeaderInDept {
-		leaderMap[ld.DeptId] = ld.Leader
-	}
-
 	report := &TDDV2ReportUsers{}
 
 	for _, deptId := range userInfo.Department {
@@ -727,7 +722,6 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 			continue
 		}
 
-		
 		logs.Info("获取部门 %d 信息 - %s", deptId, deptInfo.Name)
 
 		dept_users := &TDDV2ReportDept{}

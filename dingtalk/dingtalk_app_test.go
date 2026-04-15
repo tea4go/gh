@@ -63,8 +63,11 @@ func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
 	for _, u := range dept.Users {
 		t.Logf("%s  %s, %s, %s", indent, u.UserId, u.StaffCode, u.StaffName)
 	}
-	for _, child := range dept.Children {
-		printReportDept(t, child, indent+"  ")
+	if len(dept.SubDepts) > 0 {
+		t.Logf("%s  子部门(%d):", indent, len(dept.SubDepts))
+		for _, d := range dept.SubDepts {
+			t.Logf("%s    %d - %s (parent=%d)", indent, d.DeptId, d.Name, d.ParentId)
+		}
 	}
 }
 
@@ -75,16 +78,11 @@ func TestGetV2ReportUsers(t *testing.T) {
 	}
 
 	totalDepts, totalUsers := 0, 0
-	var countDepts func(depts []*TDDV2ReportDept)
-	countDepts = func(depts []*TDDV2ReportDept) {
-		for _, dept := range depts {
-			totalDepts++
-			totalUsers += len(dept.Users)
-			printReportDept(t, dept, "")
-			countDepts(dept.Children)
-		}
+	for _, dept := range report.Departments {
+		totalDepts++
+		totalUsers += len(dept.Users)
+		printReportDept(t, dept, "")
 	}
-	countDepts(report.Departments)
 	t.Logf("共 %d 个子团队，%d 名员工", totalDepts, totalUsers)
 }
 
