@@ -58,27 +58,14 @@ func printJSON(v interface{}) {
 	fmt.Println(string(data))
 }
 
-func printReportDept(dept *dingtalk.TDDV2ReportDept, indent string) {
-	deptName := dept.DeptName
-	if deptName == "" && dept.DeptId > 0 {
-		dep, err := app.GetV2Department(dept.DeptId)
-		if err == nil && dep != nil && dep.Name != "" {
-			deptName = dep.Name
-		}
-	}
-	if deptName == "" {
-		deptName = "-"
+func printReportDept(dept *dingtalk.TDDV2ReportDept) {
+	fmt.Printf("【%s】共 %d 人\n", dept.DeptName, len(dept.Users))
+	for _, child := range dept.SubDepts {
+		fmt.Printf("  %s (%d)\n", child.Name, child.DeptId)
 	}
 
-	fmt.Printf("%s【%s】(dept=%d, 共 %d 人)\n", indent, deptName, dept.DeptId, len(dept.Users))
 	for _, u := range dept.Users {
-		fmt.Printf("%s  %s, %s, %s\n", indent, u.UserId, u.StaffCode, u.StaffName)
-	}
-	if len(dept.SubDepts) > 0 {
-		fmt.Printf("%s  子部门(%d):\n", indent, len(dept.SubDepts))
-		for _, child := range dept.SubDepts {
-			fmt.Printf("%s    %s (%d, parent=%d)\n", indent, child.Name, child.DeptId, child.ParentId)
-		}
+		fmt.Printf("  %s, %-4s (%s)\n", u.StaffCode, u.StaffName, u.UserId)
 	}
 }
 
@@ -384,9 +371,9 @@ func cmdReportUsers(userid string) {
 	for _, dept := range report.Departments {
 		totalDepts++
 		totalUsers += len(dept.Users)
-		printReportDept(dept, "")
+		printReportDept(dept)
 	}
-	fmt.Printf("\n共 %d 个子团队，%d 名员工\n", totalDepts, totalUsers)
+	fmt.Printf("\n共 %d 个子团队，共 %d 名员工(包含自己)\n", totalDepts, totalUsers)
 }
 
 func cmdReportTemplates(userid string) {
