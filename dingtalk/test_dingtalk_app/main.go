@@ -9,7 +9,14 @@ import (
 
 	dingtalk "github.com/tea4go/gh/dingtalk"
 	logs "github.com/tea4go/gh/log4go"
+	"github.com/tea4go/gh/network"
 )
+
+// 标准程序块
+var appName string = "test_dingtalk_app"
+var appVer string = "v0.0.4"
+var IsBeta string
+var BuildTime string
 
 var app *dingtalk.TDingTalkApp
 
@@ -18,9 +25,6 @@ func initApp() {
 	clientSecret := os.Getenv("DINGTALK_Client_Secret")
 	corpId := os.Getenv("DINGTALK_Corp_ID")
 	agentId := os.Getenv("DINGTALK_Agent_ID")
-	if agentId == "" {
-		agentId = "615063230"
-	}
 
 	if clientID == "" || clientSecret == "" {
 		fmt.Println("请设置环境变量：")
@@ -31,8 +35,11 @@ func initApp() {
 		os.Exit(1)
 	}
 
-	logs.SetFDebug(false)
-	logs.SetLogger("console", `{"color":true,"level":7}`)
+	// 标准程序块
+	network.SetAppVersion(appName, appVer, IsBeta, BuildTime) //设置应用版本号，便于自动更新
+	logs.StartLogger()
+	network.StartSelfUpdate("http://wc192.yj2025.icu:8118", "http://nj.yj2025.icu:23432", "http://wc8.yj2025.icu:8118", "http://wc47.yj2025.icu:23431")
+	// 标准程序块
 
 	app = dingtalk.GetDingTalkApp(clientID, clientSecret, corpId, agentId)
 }
@@ -301,6 +308,12 @@ func cmdDeptFullName(depid int) {
 }
 
 func cmdDeptUsers(depid int) {
+	dept, err := app.GetV2Department(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf(":: 部门 %s (本级=%d，上级=%d)\n", dept.Name, dept.Id, dept.PId)
 	users, err := app.GetDeptUsers(depid)
 	if err != nil {
 		fmt.Printf("错误: %v\n", err)
@@ -318,15 +331,15 @@ func cmdSubDepts(depid int) {
 		fmt.Printf("错误: %v\n", err)
 		return
 	}
-	fmt.Printf(":: %d - %s (上级=%d)\n", dept.Id, dept.Name, dept.PId)
+	fmt.Printf(":: 部门 %s (本级=%d，上级=%d)\n", dept.Name, dept.Id, dept.PId)
 	depts, err := app.GetSubDepts(depid)
 	if err != nil {
 		fmt.Printf("错误: %v\n", err)
 		return
 	}
-	fmt.Printf("子部门列表 (%d 个):\n", len(depts))
+	fmt.Printf(":: 下级 (%d 个):\n", len(depts))
 	for _, d := range depts {
-		fmt.Printf("  %d, %s\n", d.DeptId, d.Name)
+		fmt.Printf("  %s (%d)\n", d.Name, d.DeptId)
 	}
 }
 
