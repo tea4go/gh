@@ -742,29 +742,41 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 			return nil, err
 		}
 
-		managerUserIDs := map[string]struct{}{}
-		for _, id := range deptInfo.MUserIds {
-			if id == "" {
-				continue
-			}
-			managerUserIDs[id] = struct{}{}
-		}
-		if len(managerUserIDs) > 0 {
-			_, isManager := managerUserIDs[userid]
-			if !isManager {
-				filtered := make([]*TDDV2User, 0, len(subDeptUsers))
-				for _, u := range subDeptUsers {
-					if u == nil || u.UserId == "" {
-						continue
-					}
-					if _, ok := managerUserIDs[u.UserId]; ok {
-						continue
-					}
-					filtered = append(filtered, u)
+		//如果用户不是主管，则过滤掉主管员工
+		managerUserIDsText := "|" + strings.Join(deptInfo.MUserIds, "|") + "|"
+		if managerUserIDsText != "||" && !strings.Contains(managerUserIDsText, "|"+userid+"|") {
+			filtered := make([]*TDDV2User, 0, len(subDeptUsers))
+			for _, u := range subDeptUsers {
+				if u == nil || u.UserId == "" {
+					continue
 				}
-				subDeptUsers = filtered
+				if strings.Contains(managerUserIDsText, "|"+u.UserId+"|") {
+					continue
+				}
+				filtered = append(filtered, u)
 			}
+			subDeptUsers = filtered
 		}
+
+		//根据员工Code排序
+		sort.Slice(subDeptUsers,
+			func(i, j int) bool {
+				ui, uj := subDeptUsers[i], subDeptUsers[j]
+				if ui == nil {
+					return false
+				}
+				if uj == nil {
+					return true
+				}
+				si, sj := ui.StaffCode, uj.StaffCode
+				if si == "" && sj != "" {
+					return false
+				}
+				if sj == "" && si != "" {
+					return true
+				}
+				return si < sj
+			})
 
 		logs.Info("获取部门 %d 子部门员工 - %d 人", deptId, len(subDeptUsers))
 		dept_users.Users = subDeptUsers
