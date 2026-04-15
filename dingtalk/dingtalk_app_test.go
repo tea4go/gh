@@ -89,7 +89,7 @@ func TestGetV2ReportUsers(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
-	user, err := app.GetV2UserInfo("1795")
+	user, err := app.GetV2UserInfo("201")
 	if err != nil {
 		t.Fatalf("获取用户信息出错: %v", err)
 	}
@@ -98,7 +98,14 @@ func TestGetV2UserInfo(t *testing.T) {
 }
 
 func TestGetV2Department(t *testing.T) {
-	dep, err := app.GetV2Department(919894208)
+	//  [
+	// 	668891974,
+	// 	920096052,
+	// 	919894208,
+	// 	919660666,
+	// 	919892235
+	// ]
+	dep, err := app.GetV2Department(920096052)
 	if err != nil {
 		t.Fatalf("获取部门信息出错: %v", err)
 	}
@@ -148,13 +155,63 @@ func TestGetFullDeptName(t *testing.T) {
 }
 
 func TestGetDeptUsers(t *testing.T) {
-	users, err := app.GetDeptUsers(919894208)
+	users, err := app.GetDeptUsers(920096052)
 	if err != nil {
 		t.Fatalf("获取部门用户出错: %v", err)
 	}
 	//t.Logf("部门用户: %+v", users)
 	for _, v := range users {
 		t.Logf("%s - %s", v.StaffCode, v.StaffName)
+	}
+}
+
+func TestGetSubDepts(t *testing.T) {
+	depts, err := app.GetSubDepts(920096052)
+	if err != nil {
+		t.Fatalf("获取子部门列表出错: %v", err)
+	}
+	for _, d := range depts {
+		t.Logf("%d - %s (父=%d)", d.DeptId, d.Name, d.ParentId)
+	}
+
+	ids, err := app.GetSubDeptIds(600560806)
+	if err != nil {
+		t.Fatalf("获取子部门ID列表出错: %v", err)
+	}
+	t.Logf("子部门ID列表: %v", ids)
+}
+
+func TestGetSubDeptIds(t *testing.T) {
+	depts, err := app.GetSubDepts(919894208)
+	if err != nil {
+		t.Fatalf("获取子部门列表出错: %v", err)
+	}
+	want := map[int]struct{}{}
+	for _, d := range depts {
+		want[d.DeptId] = struct{}{}
+	}
+
+	ids, err := app.GetSubDeptIds(919894208)
+	if err != nil {
+		t.Fatalf("获取子部门ID列表出错: %v", err)
+	}
+
+	seen := map[int]struct{}{}
+	for _, id := range ids {
+		if id <= 0 {
+			t.Fatalf("返回的子部门ID非法: %d", id)
+		}
+		if _, ok := seen[id]; ok {
+			t.Fatalf("返回的子部门ID重复: %d", id)
+		}
+		seen[id] = struct{}{}
+		if _, ok := want[id]; !ok {
+			t.Fatalf("返回的子部门ID不在子部门列表中: %d", id)
+		}
+	}
+
+	if len(seen) != len(want) {
+		t.Fatalf("子部门数量不一致: ids=%d, depts=%d", len(seen), len(want))
 	}
 }
 
@@ -176,13 +233,26 @@ func TestGetV2UserInfoByUnionId(t *testing.T) {
 }
 
 func TestGetV2UsersByName(t *testing.T) {
-	users, err := app.GetV2UsersByName("刘")
+	users, err := app.GetV2UsersByName("蒋靖昊")
 	if err != nil {
 		t.Fatalf("查询用户名出错: %v", err)
 	}
-
+	ffmt.Puts(users)
 	for _, v := range users {
 		t.Logf("[%s] %s - %s(%s/%s)", v.UserId, v.StaffCode, v.StaffName, v.Attrs.Org, v.Attrs.Job)
+
+		for _, deptId := range v.Department {
+			t.Logf("部门: %v", deptId)
+
+			users, err := app.GetDeptUsers(deptId)
+			if err != nil {
+				t.Fatalf("获取部门用户出错: %v", err)
+			}
+			for _, v := range users {
+				t.Logf("%s - %s", v.StaffCode, v.StaffName)
+			}
+		}
+
 	}
 	t.Logf("总共查找 %d 用户", len(users))
 }

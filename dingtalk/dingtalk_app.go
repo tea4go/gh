@@ -92,6 +92,12 @@ type TDeptInfo struct {
 	OwnerUserId string   `json:"org_dept_owner"`           //企业群群主
 }
 
+type TDeptSubInfo struct {
+	DeptId   int    `json:"dept_id"`
+	Name     string `json:"name"`
+	ParentId int    `json:"parent_id"`
+}
+
 // String 转换为字符串
 func (Self *TDeptInfo) String() string {
 	s, _ := json.Marshal(Self)
@@ -642,9 +648,22 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	return users, nil
 }
 
-// GetSubDeptIds 获取部门的直属子部门ID列表
+// GetSubDeptIds 获取部门的直属子部门
 // https://oapi.dingtalk.com/topapi/v2/department/listsub
 func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
+	depts, err := Self.GetSubDepts(deptId)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]int, 0, len(depts))
+	for _, d := range depts {
+		ids = append(ids, d.DeptId)
+	}
+	return ids, nil
+}
+
+func (Self *TDingTalkApp) GetSubDepts(deptId int) ([]TDeptSubInfo, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
 		return nil, err
@@ -654,7 +673,7 @@ func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
 	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(deptId))
-	logs.Debug("访问接口：%s (获取子部门列表, parent=%d)", ddurl, deptId)
+	logs.Debug("访问接口：%s (获取子部门 - %d)", ddurl, deptId)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -664,22 +683,16 @@ func (Self *TDingTalkApp) GetSubDeptIds(deptId int) ([]int, error) {
 
 	switch dingResp.ErrCode {
 	case 0:
-		var deptList []struct {
-			DeptId int `json:"dept_id"`
-		}
+		var deptList []TDeptSubInfo
 		err = json.Unmarshal(dingResp.Result, &deptList)
 		if err != nil {
 			return nil, err
 		}
-		var ids []int
-		for _, d := range deptList {
-			ids = append(ids, d.DeptId)
-		}
-		logs.Debug("==> %d (共 %d 个子部门)", deptId, len(ids))
-		return ids, nil
+		logs.Debug("==> %d (共 %d 个子部门)", deptId, len(deptList))
+		return deptList, nil
 	case 503:
 		Self.token = nil
-		return Self.GetSubDeptIds(deptId)
+		return Self.GetSubDepts(deptId)
 	default:
 		return nil, errors.New(dingResp.ErrMsg)
 	}
@@ -950,6 +963,51 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDV2User, error) {
 	default:
 		return nil, errors.New(dingResp.ErrMsg)
 	}
+}
+
+func (Self *TDingTalkApp) GetDeptUsersV2(deptId int) ([]*TDDV2User, error) {
+	byUserID := map[string]*TDDV2User{}
+	ordered := make([]*TDDV2User, 0, 128)
+	visitedDepts := map[int]struct{}{}
+
+	var walk func(id int) error
+	walk = func(id int) error {
+		if _, ok := visitedDepts[id]; ok {
+			return nil
+		}
+		visitedDepts[id] = struct{}{}
+
+		users, err := Self.GetDeptUsers(id)
+		if err != nil {
+			return err
+		}
+		for _, u := range users {
+			if u == nil || u.UserId == "" {
+				continue
+			}
+			if _, ok := byUserID[u.UserId]; ok {
+				continue
+			}
+			byUserID[u.UserId] = u
+			ordered = append(ordered, u)
+		}
+
+		subDeptIDs, err := Self.GetSubDeptIds(id)
+		if err != nil {
+			return err
+		}
+		for _, subID := range subDeptIDs {
+			if err := walk(subID); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if err := walk(deptId); err != nil {
+		return nil, err
+	}
+	return ordered, nil
 }
 
 // GetOrgName 获取组织名称

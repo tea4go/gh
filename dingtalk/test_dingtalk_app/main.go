@@ -75,7 +75,7 @@ func usage() {
   dept <deptid>                                 获取部门详情
   dept-fullname <deptid>                        获取部门完整路径名称
   dept-users <deptid>                           获取部门下所有用户
-  sub-depts <deptid>                            获取子部门ID列表
+  sub-depts <deptid>                            获取子部门列表
   report-users <userid>                         获取用户所属部门的员工列表（按子部门分组）
   report-templates <userid>                     获取用户可用的日志模板列表
   report-template <userid> <template_name>      获取指定日志模板详情
@@ -313,19 +313,20 @@ func cmdDeptUsers(depid int) {
 }
 
 func cmdSubDepts(depid int) {
-	ids, err := app.GetSubDeptIds(depid)
+	dept, err := app.GetV2Department(depid)
 	if err != nil {
 		fmt.Printf("错误: %v\n", err)
 		return
 	}
-	fmt.Printf("子部门ID列表 (%d 个):\n", len(ids))
-	for _, id := range ids {
-		dept, err := app.GetV2Department(id)
-		if err != nil {
-			fmt.Printf("  %d (获取详情失败: %v)\n", id, err)
-			continue
-		}
-		fmt.Printf("  %d, %s\n", id, dept.Name)
+	fmt.Printf(":: %d - %s (上级=%d)\n", dept.Id, dept.Name, dept.PId)
+	depts, err := app.GetSubDepts(depid)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("子部门列表 (%d 个):\n", len(depts))
+	for _, d := range depts {
+		fmt.Printf("  %d, %s\n", d.DeptId, d.Name)
 	}
 }
 
