@@ -735,6 +735,24 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 		}
 		logs.Info("获取部门 %d 子部门 - %d 个", deptId, len(subDepts))
 
+		sort.Slice(subDepts, func(i, j int) bool {
+			di, dj := subDepts[i], subDepts[j]
+			if di == nil {
+				return false
+			}
+			if dj == nil {
+				return true
+			}
+			ni, nj := di.Name, dj.Name
+			if ni == "" && nj != "" {
+				return false
+			}
+			if nj == "" && ni != "" {
+				return true
+			}
+			return ni < nj
+		})
+
 		dept_users.SubDepts = subDepts
 		//获取当前部门的子部门员工列表
 		subDeptUsers, err := Self.GetDeptUsers(deptId)
