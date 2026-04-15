@@ -106,67 +106,67 @@ func main() {
 	args := os.Args[2:]
 
 	switch cmd {
-	case "access-token":
+	case "access-token": // access-token 获取 AccessToken
 		cmdAccessToken()
-	case "jsapi-ticket":
+	case "jsapi-ticket": // jsapi-ticket 获取 JSAPI Ticket
 		cmdJSAPITicket()
-	case "config":
+	case "config": // config <nonceStr> <timestamp> <url> 获取前端鉴权配置
 		requireArgs(cmd, args, 3)
 		cmdConfig(args[0], args[1], args[2])
-	case "admins":
-		cmdAdmins()
-	case "user":
+	case "admins": // admins 获取管理员列表
+		cmdAdmins() /*OK*/
+	case "user": // user <userid> 根据userid获取用户详情
 		requireArgs(cmd, args, 1)
-		cmdUserInfo(args[0])
-	case "user-by-phone":
+		cmdUserInfo(args[0]) /*OK*/
+	case "user-by-phone": // user-by-phone <phone> 根据手机号获取用户详情
 		requireArgs(cmd, args, 1)
-		cmdUserInfoByPhone(args[0])
-	case "user-by-unionid":
+		cmdUserInfoByPhone(args[0]) /*OK*/
+	case "user-by-unionid": // user-by-unionid <unionid> 根据unionid获取用户详情
 		requireArgs(cmd, args, 1)
-		cmdUserInfoByUnionId(args[0])
-	case "users-by-name":
+		cmdUserInfoByUnionId(args[0]) /*OK*/
+	case "users-by-name": // users-by-name <name> 根据姓名搜索用户列表
 		requireArgs(cmd, args, 1)
-		cmdUsersByName(args[0])
-	case "org-name":
+		cmdUsersByName(args[0]) /*OK*/
+	case "org-name": // org-name <userid> 获取用户所属组织名称
 		requireArgs(cmd, args, 1)
-		cmdOrgName(args[0])
-	case "job-name":
+		cmdOrgName(args[0]) /*OK*/
+	case "job-name": // job-name <userid> 获取用户岗位名称
 		requireArgs(cmd, args, 1)
-		cmdJobName(args[0])
-	case "dept":
+		cmdJobName(args[0]) /*OK*/
+	case "dept": // dept <deptid> 获取部门详情
 		requireArgs(cmd, args, 1)
-		cmdDept(parseIntArg(args[0]))
-	case "dept-fullname":
+		cmdDept(parseIntArg(args[0])) /*OK*/
+	case "dept-fullname": // dept-fullname <deptid> 获取部门完整路径名称
 		requireArgs(cmd, args, 1)
-		cmdDeptFullName(parseIntArg(args[0]))
-	case "dept-users":
+		cmdDeptFullName(parseIntArg(args[0])) /*OK*/
+	case "dept-users": // dept-users <deptid> 获取部门用户(直接下级)
 		requireArgs(cmd, args, 1)
-		cmdDeptUsers(parseIntArg(args[0]))
-	case "sub-depts":
+		cmdDeptUsers(parseIntArg(args[0])) /*OK*/
+	case "sub-depts": // sub-depts <deptid> 获取子部门列表
 		requireArgs(cmd, args, 1)
-		cmdSubDepts(parseIntArg(args[0]))
-	case "report-users":
+		cmdSubDepts(parseIntArg(args[0])) /*OK*/
+	case "report-users": // report-users <userid> 获取用户所属部门的员工列表（按子部门分组）
 		requireArgs(cmd, args, 1)
 		cmdReportUsers(args[0])
-	case "report-templates":
+	case "report-templates": // report-templates <userid> 获取用户可用的日志模板列表
 		requireArgs(cmd, args, 1)
 		cmdReportTemplates(args[0])
-	case "report-template":
+	case "report-template": // report-template <userid> <template_name> 获取指定日志模板详情
 		requireArgs(cmd, args, 2)
 		cmdReportTemplate(args[0], args[1])
-	case "report-list":
+	case "report-list": // report-list <userid> <start> <end> 获取用户日志列表（详情）
 		requireArgs(cmd, args, 3)
 		cmdReportList(args[0], args[1], args[2])
-	case "report-simple-list":
+	case "report-simple-list": // report-simple-list <userid> <start> <end> 获取用户日志列表（简要）
 		requireArgs(cmd, args, 3)
 		cmdReportSimpleList(args[0], args[1], args[2])
-	case "create-report":
+	case "create-report": // create-report <userid> <template_id> <to_ids> <text_a> <text_b> 创建日志
 		requireArgs(cmd, args, 5)
 		cmdCreateReport(args[0], args[1], args[2], args[3], args[4])
-	case "send-notify":
+	case "send-notify": // send-notify <userid> <msg_json> 发送工作通知
 		requireArgs(cmd, args, 2)
 		cmdSendNotify(args[0], args[1])
-	case "login-info":
+	case "login-info": // login-info <authcode> 通过临时授权码获取登录信息
 		requireArgs(cmd, args, 1)
 		cmdLoginInfo(args[0])
 	default:
@@ -228,7 +228,11 @@ func cmdAdmins() {
 	}
 	fmt.Printf("管理员列表 (%d 人):\n", len(admins.Admins))
 	for _, a := range admins.Admins {
-		fmt.Printf("  userid=%s, sys_level=%d\n", a.UserId, a.SysLevel)
+		if a.SysLevel == 1 {
+			fmt.Printf("  userid = %s (主管理员)\n", a.UserId)
+		} else {
+			fmt.Printf("  userid = %s\n", a.UserId)
+		}
 	}
 }
 
@@ -267,7 +271,7 @@ func cmdUsersByName(name string) {
 	}
 	fmt.Printf("搜索结果 (%d 人):\n", len(users))
 	for _, u := range users {
-		fmt.Printf("  %s, %s, %s (%s/%s)\n", u.UserId, u.StaffCode, u.StaffName, u.Attrs.Org, u.Attrs.Job)
+		fmt.Printf("%7s, %s, %s (%s/%s)\n", u.UserId, u.StaffCode, u.StaffName, u.Attrs.Org, u.Attrs.Job)
 	}
 }
 

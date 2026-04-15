@@ -1044,7 +1044,11 @@ func (Self *TDingTalkApp) GetFullDeptName(depid int) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			return name + "/" + info.Name, nil
+			if info.PId == 1 {
+				return info.Name, nil
+			} else {
+				return name + "-" + info.Name, nil
+			}
 		} else {
 			return "", nil
 		}
