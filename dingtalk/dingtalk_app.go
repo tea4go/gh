@@ -900,7 +900,7 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDV2User, error) {
 	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(depid))
-	logs.Debug("访问接口：%s (获取部门用户)", ddurl)
+	logs.Debug("访问接口：%s (获取部门用户) - %d", ddurl, depid)
 
 	var dingResp TDingTalkResponse
 	err = req.ToJSON(&dingResp)
@@ -920,7 +920,11 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDV2User, error) {
 		}
 
 		var users []*TDDV2User
-		for _, v := range info.UserIDList {
+		for k, v := range info.UserIDList {
+			if k >= 100 {
+				logs.Warning("最多获取 100 人 (部门=%d)", depid)
+				break
+			}
 			user, err := Self.GetV2UserInfo(v)
 			if err != nil {
 				return nil, err
