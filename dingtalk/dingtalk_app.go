@@ -712,13 +712,16 @@ func (Self *TDingTalkApp) GetV2ReportUsers(userid string) (*TDDV2ReportUsers, er
 	report := &TDDV2ReportUsers{}
 
 	for _, deptId := range userInfo.Department {
-
+		if deptId == 1 {
+			continue
+		}
 		logs.Info("获取部门 %d 信息", deptId)
 		deptInfo, err := Self.GetV2Department(deptId)
 		if err != nil {
 			return nil, err
 		}
-		if strings.HasSuffix(deptInfo.Name, "_HRBP") || strings.Contains(deptInfo.Name, "钉钉合作") {
+		if strings.HasSuffix(deptInfo.Name, "HRBP_") || strings.HasSuffix(deptInfo.Name, "_HRBP") || strings.Contains(deptInfo.Name, "钉钉合作") ||
+			strings.Contains(deptInfo.Name, "驻地") || strings.Contains(deptInfo.Name, "研发中心") || strings.Contains(deptInfo.Name, "互联网公司") {
 			continue
 		}
 
