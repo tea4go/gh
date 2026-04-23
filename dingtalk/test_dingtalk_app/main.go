@@ -167,7 +167,11 @@ func main() {
 		cmdReportUsers(args[0])
 	case "report-templates": // report-templates <userid> 获取用户可用的日志模板列表
 		requireArgs(cmd, args, 1)
-		cmdReportTemplates(args[0])
+		if len(args) >= 2 {
+			cmdReportTemplates(args[0], args[1])
+		} else {
+			cmdReportTemplates(args[0])
+		}
 	case "report-template": // report-template <userid> <template_name> 获取指定日志模板详情
 		requireArgs(cmd, args, 2)
 		cmdReportTemplate(args[0], args[1])
@@ -380,15 +384,31 @@ func cmdReportUsers(userid string) {
 	fmt.Printf("\n共 %d 个子团队，共 %d 名员工(包含自己)\n", totalDepts, totalUsers)
 }
 
-func cmdReportTemplates(userid string) {
+func cmdReportTemplates(userid string, keyword ...string) {
 	templates, err := app.GetV2ReportTemplateList(userid)
 	if err != nil {
 		fmt.Printf("错误: %v\n", err)
 		return
 	}
-	fmt.Printf("日志模板列表 (%d 个):\n", len(templates))
-	for _, t := range templates {
-		fmt.Printf("  name=%s, code=%s\n", t.Name, t.ReportCode)
+	filterKeyword := ""
+	if len(keyword) > 0 {
+		filterKeyword = strings.TrimSpace(keyword[0])
+	}
+
+	filteredTemplates := templates
+	if filterKeyword != "" {
+		filteredTemplates = make([]dingtalk.TDDReportTemplateItem, 0, len(templates))
+		filterLower := strings.ToLower(filterKeyword)
+		for _, t := range templates {
+			if strings.Contains(strings.ToLower(t.Name), filterLower) {
+				filteredTemplates = append(filteredTemplates, t)
+			}
+		}
+	}
+
+	fmt.Printf("日志模板列表 (%d 个):\n", len(filteredTemplates))
+	for k, t := range filteredTemplates {
+		fmt.Printf("%3d %s - %s\n", k, t.ReportCode, t.Name)
 	}
 }
 

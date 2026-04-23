@@ -302,6 +302,7 @@ type TDDReportTemplate struct {
 type TDDReportTemplateItem struct {
 	Name       string `json:"name"`
 	ReportCode string `json:"report_code"`
+	URL        string `json:"url"`
 }
 type TDDReportTemplateList struct {
 	TemplateList []TDDReportTemplateItem `json:"template_list"`
@@ -1143,10 +1144,13 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 			if err != nil {
 				return nil, err
 			}
-			fmt.Printf("page.TemplateList: %+v\n", page)
+			//fmt.Printf("page.TemplateList: %+v\n", page)
 			allItems = append(allItems, page.TemplateList...)
 			logs.Debug("返回数据：本页 %d 个日志模板，累计 %d 个", len(page.TemplateList), len(allItems))
 			if page.NextCursor == 0 || len(page.TemplateList) == 0 {
+				sort.SliceStable(allItems, func(i, j int) bool {
+					return strings.Compare(allItems[i].Name, allItems[j].Name) < 0
+				})
 				return allItems, nil
 			}
 			cursor = page.NextCursor
