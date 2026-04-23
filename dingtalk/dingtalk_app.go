@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -364,6 +365,7 @@ type TDingTalkApp struct {
 	agent_id          string
 	token             *TAccessToken
 	ticket            *TJsapiTicket
+	transport         http.RoundTripper
 	timeout_connect   time.Duration
 	timeout_readwrite time.Duration
 }
@@ -390,6 +392,51 @@ func GetDingTalkApp(appkey, appsecret, corp_id, agent_id string) *TDingTalkApp {
 // SetAgentId 设置 Agent ID
 func (Self *TDingTalkApp) SetAgentId(agent_id string) {
 	Self.agent_id = agent_id
+}
+
+// SetTransport 为当前 DingTalk app 实例注入自定义 transport。
+// 这样代理配置只作用于当前实例，不会污染 network 包的全局默认设置。
+func (Self *TDingTalkApp) SetTransport(transport http.RoundTripper) {
+	Self.transport = transport
+}
+
+func (Self *TDingTalkApp) requestTransport() http.RoundTripper {
+	if Self.transport == nil {
+		return nil
+	}
+	// http.Transport 是可变对象，请求侧使用克隆副本，避免多个请求共享状态。
+	if transport, ok := Self.transport.(*http.Transport); ok {
+		return transport.Clone()
+	}
+	return Self.transport
+}
+
+// newRequest 是 TDingTalkApp 的唯一 HTTP 入口。
+// 所有实例方法都应该经过这里创建请求，避免直接调用 network.HttpGet/HttpPost/HttpRequest*
+// 导致 SetTransport 注入的代理 transport 被绕过。
+func (Self *TDingTalkApp) newRequest(method, url string) *network.THttpRequest {
+	var req *network.THttpRequest
+	switch method {
+	case http.MethodPost:
+		req = network.HttpPost(url)
+	default:
+		req = network.HttpGet(url)
+	}
+	req.SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	if transport := Self.requestTransport(); transport != nil {
+		// 所有通过实例封装发出的请求都能自动继承代理 transport。
+		req.SetTransport(transport)
+	}
+	return req
+}
+
+// newGet/newPost 保留为向后兼容的轻量包装，真正的入口是 newRequest。
+func (Self *TDingTalkApp) newGet(url string) *network.THttpRequest {
+	return Self.newRequest(http.MethodGet, url)
+}
+
+func (Self *TDingTalkApp) newPost(url string) *network.THttpRequest {
+	return Self.newRequest(http.MethodPost, url)
 }
 
 // GetConfig is to return config in json
@@ -429,7 +476,7 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 		return Self.token.AccessToken, nil
 	}
 
-	req := network.HttpGet(Self.ddurl+"/gettoken").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(Self.ddurl + "/gettoken")
 	req.Param("appkey", Self.appkey)
 	req.Param("appsecret", Self.appsecret)
 
@@ -463,7 +510,7 @@ func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
 
 	ddurl := "https://api.dingtalk.com/v1.0/oauth2/jsapiTickets"
 
-	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newPost(ddurl)
 	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
 	//req.Param("access_token", Self.token.AccessToken)
 	logs.Debug("访问接口：%s (获取jsapiTicket)", ddurl)
@@ -495,7 +542,7 @@ func (Self *TDingTalkApp) GetAdmins() (*TAdmins, error) {
 	}
 
 	//首先通过免authcode登授权码,获取当前登录userid
-	req := network.HttpGet(Self.ddurl+"/user/get_admin").SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(Self.ddurl + "/user/get_admin")
 	req.Param("access_token", Self.token.AccessToken)
 
 	var info TAdmins
@@ -522,7 +569,7 @@ func (Self *TDingTalkApp) GetV2UserInfoByPhone(phone string) (*TDDV2User, error)
 	}
 
 	ddurl := Self.ddurl + "/topapi/v2/user/getbymobile"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("mobile", phone)
 	logs.Debug("访问接口：%s (获取用户标识)", ddurl)
@@ -558,7 +605,7 @@ func (Self *TDingTalkApp) GetV2UserInfoByUnionId(unionid string) (*TDDV2User, er
 		return nil, err
 	}
 	ddurl := Self.ddurl + "/topapi/user/getbyunionid"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("unionid", unionid)
 	logs.Debug("访问接口：%s (获取用户标识)", ddurl)
@@ -619,11 +666,22 @@ func (Self *TDingTalkApp) GetV2UsersByName(name string) ([]*TDDV2User, error) {
 	var users []*TDDV2User
 	var userids []string
 	for {
-		state_code, _, _, err := network.HttpRequestBHB("POST", ddurl, false, reqData, header, &dingResp)
-		if state_code == 0 && err != nil {
+		// 这里不能再走 HttpRequestBHB，否则会绕过实例级 transport，导致代理配置不生效。
+		req := Self.newPost(ddurl)
+		for key, value := range header {
+			req.Header(key, value)
+		}
+		if _, err := req.JSONBody(reqData); err != nil {
 			return nil, err
 		}
-		if state_code == 200 {
+		if err := req.ToJSON(&dingResp); err != nil {
+			return nil, err
+		}
+		statusCode, err := req.StatusCode()
+		if err != nil {
+			return nil, err
+		}
+		if statusCode == 200 {
 			logs.Debug("查询 %s 有 %d/%d 个用户", name, reqData.Offset, dingResp.TotalCount)
 			for _, userid := range dingResp.List {
 				userids = append(userids, userid)
@@ -670,7 +728,7 @@ func (Self *TDingTalkApp) GetSubDepts(deptId int) ([]*TDeptSubInfo, error) {
 	}
 
 	ddurl := Self.ddurl + "/topapi/v2/department/listsub"
-	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newPost(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(deptId))
 	logs.Debug("访问接口：%s (获取子部门 - %d)", ddurl, deptId)
@@ -817,7 +875,7 @@ func (Self *TDingTalkApp) GetV2UserInfo(userid string) (*TDDV2User, error) {
 	}
 
 	ddurl := Self.ddurl + "/topapi/v2/user/get"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
 	//logs.Debug("访问接口：%s (获取用户详情)", ddurl)
@@ -862,7 +920,7 @@ func (Self *TDingTalkApp) GetV2Department(depid int) (*TDeptInfo, error) {
 	}
 
 	ddurl := Self.ddurl + "/topapi/v2/department/get"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(depid))
 	logs.Debug("访问接口：%s (获取部门详情)", ddurl)
@@ -897,7 +955,7 @@ func (Self *TDingTalkApp) GetDeptUsers(depid int) ([]*TDDV2User, error) {
 		return nil, err
 	}
 	ddurl := Self.ddurl + "/topapi/user/listid"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("dept_id", strconv.Itoa(depid))
 	logs.Debug("访问接口：%s (获取部门用户) - %d", ddurl, depid)
@@ -1041,7 +1099,7 @@ func (Self *TDingTalkApp) GetV2LoginInfo(authcode string) (string, error) {
 
 	//首先通过authcode免登授权码,获取当前登录userid
 	ddurl := Self.ddurl + "/topapi/v2/user/getuserinfo"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("code", authcode)
 	logs.Debug("访问接口：%s (获取登录用户信息)", ddurl)
@@ -1080,7 +1138,7 @@ func (Self *TDingTalkApp) SendWorkNotify(user_id string, msg_text string) (int, 
 		return -1, err
 	}
 	ddurl := Self.ddurl + "/topapi/message/corpconversation/asyncsend_v2"
-	req := network.HttpPost(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newPost(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	//req.Param("agent_id", Self.agent_id)
 	req.Param("agent_id", Self.agent_id)
@@ -1124,7 +1182,7 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 
 	for {
 		ddurl := Self.ddurl + "/topapi/report/template/listbyuserid"
-		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req := Self.newGet(ddurl)
 		req.Param("access_token", Self.token.AccessToken)
 		req.Param("userid", userid)
 		req.Param("offset", fmt.Sprintf("%d", cursor))
@@ -1171,7 +1229,7 @@ func (Self *TDingTalkApp) GetV2ReportTemplate(userid, template_name string) (*TD
 		return nil, err
 	}
 	ddurl := Self.ddurl + "/topapi/report/template/getbyname"
-	req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("userid", userid)
 	req.Param("template_name", template_name)
@@ -1228,7 +1286,7 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 
 	for {
 		ddurl := Self.ddurl + "/topapi/report/list"
-		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req := Self.newGet(ddurl)
 		req.Param("access_token", Self.token.AccessToken)
 		req.Param("userid", userid)
 		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
@@ -1321,7 +1379,7 @@ func (Self *TDingTalkApp) getV2ReportSimpleListByTemplateSegment(template_name s
 
 	for {
 		ddurl := Self.ddurl + "/topapi/report/simplelist"
-		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req := Self.newGet(ddurl)
 		req.Param("access_token", Self.token.AccessToken)
 		req.Param("template_name", template_name)
 		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
@@ -1390,7 +1448,7 @@ func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time str
 
 	for {
 		ddurl := Self.ddurl + "/topapi/report/simplelist"
-		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req := Self.newGet(ddurl)
 		req.Param("access_token", Self.token.AccessToken)
 		req.Param("userid", userid)
 		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
@@ -1466,10 +1524,20 @@ func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text
 	}
 	reqData := make(map[string]any)
 	reqData["create_report_param"] = reportParam
-	reqDataJson := utils.GetJson(reqData)
-	state_code, _, _, err := network.HttpRequestBB("POST", ddurl, false, reqDataJson, &dingResp)
-	if state_code == 0 && err != nil {
+	// 创建日志同样必须走实例级请求封装，才能确保代理 transport 被实际使用。
+	req := Self.newPost(ddurl)
+	if _, err := req.JSONBody(reqData); err != nil {
 		return "", err
+	}
+	if err := req.ToJSON(&dingResp); err != nil {
+		return "", err
+	}
+	statusCode, err := req.StatusCode()
+	if err != nil {
+		return "", err
+	}
+	if statusCode != 200 {
+		return "", fmt.Errorf("http status %d", statusCode)
 	}
 
 	switch dingResp.ErrCode {
