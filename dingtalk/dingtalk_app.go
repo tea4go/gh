@@ -1271,22 +1271,50 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	}
 }
 
-// GetV2ReportTemplateCount 获取日志模板在指定时间范围内的日志
+// GetV2ReportSimpleListByTemplate 获取日志模板从指定日期到当天的日志（自动按180天分段查询）
 func (Self *TDingTalkApp) GetV2ReportSimpleListByTemplate(template_name, start_time string) ([]TDDReportSimpleItem, error) {
-	// 处理时间格式：start_time 取当天 00:00:00，end_time 取当天 23:59:59
 	layout := "2006-01-02"
 	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
 	if err != nil {
 		return nil, err
 	}
 
-	endTime := startTime.AddDate(0, 0, 180)
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.Local)
 
 	_, err = Self.GetAccessToken()
 	if err != nil {
 		return nil, err
 	}
 
+	var allItems []TDDReportSimpleItem
+	segmentStart := startTime
+
+	for {
+		segmentEnd := segmentStart.AddDate(0, 0, 179)
+		if segmentEnd.After(today) {
+			segmentEnd = today
+		}
+
+		items, err := Self.getV2ReportSimpleListByTemplateSegment(template_name, segmentStart, segmentEnd)
+		if err != nil {
+			return nil, err
+		}
+		allItems = append(allItems, items...)
+		logs.Debug("分段查询完成：%s ~ %s，本段 %d 条，累计 %d 条", segmentStart.Format(layout), segmentEnd.Format(layout), len(items), len(allItems))
+
+		if segmentEnd.Equal(today) || segmentEnd.After(today) {
+			break
+		}
+		segmentStart = segmentEnd.AddDate(0, 0, 1)
+	}
+
+	return allItems, nil
+}
+
+// getV2ReportSimpleListByTemplateSegment 查询单个时间段内的日志（不超过180天，自动分页）
+func (Self *TDingTalkApp) getV2ReportSimpleListByTemplateSegment(template_name string, startTime, endTime time.Time) ([]TDDReportSimpleItem, error) {
+	layout := "2006-01-02"
 	var allItems []TDDReportSimpleItem
 	var cursor int64 = 0
 	pageSize := 20
@@ -1300,10 +1328,10 @@ func (Self *TDingTalkApp) GetV2ReportSimpleListByTemplate(template_name, start_t
 		req.Param("end_time", fmt.Sprintf("%d", endTime.UnixMilli()))
 		req.Param("cursor", fmt.Sprintf("%d", cursor))
 		req.Param("size", fmt.Sprintf("%d", pageSize))
-		logs.Debug("访问接口：%s (获取用户日志概要列表) cursor=%d, %s - %s", ddurl, cursor, start_time, endTime.Format(layout))
+		logs.Debug("访问接口：%s (获取用户日志概要列表) cursor=%d, %s - %s", ddurl, cursor, startTime.Format(layout), endTime.Format(layout))
 
 		var dingResp TDingTalkResponse
-		err = req.ToJSON(&dingResp)
+		err := req.ToJSON(&dingResp)
 		if err != nil {
 			return nil, err
 		}
