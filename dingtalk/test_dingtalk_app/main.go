@@ -29,15 +29,12 @@ var corpId string
 var agentId string
 
 func initApp() {
-	if agentId == "" {
-		agentId = "615063230"
-	}
 	if clientID == "" || clientSecret == "" {
 		fmt.Println("请设置环境变量：")
 		fmt.Println("  DINGTALK_Client_ID    - 应用的 AppKey")
 		fmt.Println("  DINGTALK_Client_Secret - 应用的 AppSecret")
-		fmt.Println("  DINGTALK_Corp_ID      - 企业 CorpId（可选）")
-		fmt.Println("  DINGTALK_Agent_ID     - 应用 AgentId（可选，默认 615063230）")
+		fmt.Println("  DINGTALK_Corp_ID      - 企业 CorpId")
+		fmt.Println("  DINGTALK_Agent_ID     - 应用 AgentId")
 		fmt.Println("或通过命令行参数指定：")
 		fmt.Println("  --client-id / --client-secret / --corp-id / --agent-id")
 		os.Exit(1)
@@ -450,7 +447,7 @@ func cmdReportSimpleListByTemplate(templateName, start string) {
 	}
 	fmt.Printf("简要日志列表 (%d 条):\n", len(items))
 	for i, item := range items {
-		fmt.Printf("  [%3d] id=%s, creator=%s (%s), 创建时间=%s\n", i+1, item.ReportID, item.CreatorName, item.DeptName, time.Unix(item.CreateTime/1000, 0).Format("2006-01-02 15:04"))
+		fmt.Printf("  [%3d] %s - %s - %s (%s)\n", i+1, item.ReportID, time.Unix(item.CreateTime/1000, 0).Format("2006-01-02 15:04"), item.CreatorName, item.DeptName)
 	}
 }
 

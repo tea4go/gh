@@ -1360,8 +1360,9 @@ func (Self *TDingTalkApp) GetV2ReportSimpleListByTemplate(template_name, start_t
 			return nil, err
 		}
 		allItems = append(allItems, items...)
-		logs.Info("分段查询完成：%s ~ %s，本段 %d 条，累计 %d 条", segmentStart.Format(layout), segmentEnd.Format(layout), len(items), len(allItems))
-
+		if len(items) > 0 {
+			logs.Info("分段查询完成：%s ~ %s，本段 %d 条，累计 %d 条", segmentStart.Format(layout), segmentEnd.Format(layout), len(items), len(allItems))
+		}
 		if segmentEnd.Equal(today) || segmentEnd.After(today) {
 			break
 		}
