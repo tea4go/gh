@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	logs "github.com/tea4go/gh/log4go"
 	"gopkg.in/ffmt.v1"
 )
@@ -371,7 +372,7 @@ func TestGetV2ReportTemplateListNoDeadLoop(t *testing.T) {
 }
 
 func TestGetV2ReportTemplate(t *testing.T) {
-	reportList, err := app.GetV2ReportTemplate("201", "周报")
+	reportList, err := app.GetV2ReportTemplate("37079", "个人周报")
 	if err != nil {
 		t.Fatalf("查询用户日志模板出错: %v", err)
 	}
@@ -380,6 +381,75 @@ func TestGetV2ReportTemplate(t *testing.T) {
 		t.Logf("Typer=%d - Sort=%d : %s", v.Type, v.Sort, v.FieldName)
 	}
 }
+
+func getTestReportID(t *testing.T) string {
+	t.Helper()
+	// 优先使用外部注入，避免把真实 reportID 写死在代码里
+	if v := os.Getenv("DINGTALK_TEST_REPORT_ID"); v != "" {
+		return v
+	}
+	// 兜底值：用于本地/CI 编译通过（实际运行需保证 reportID 可用）
+	return "19d9af57299dd0a1392bb7842598bb74"
+}
+
+func assertUserIDList(t *testing.T, name string, userIDs []string) {
+	t.Helper()
+	if len(userIDs) == 0 {
+		t.Logf("%s为空", name)
+		return
+	}
+	seen := map[string]struct{}{}
+	for _, id := range userIDs {
+		if strings.TrimSpace(id) == "" {
+			t.Fatalf("%s包含空 userId", name)
+		}
+		if _, ok := seen[id]; ok {
+			t.Fatalf("%s包含重复 userId: %s", name, id)
+		}
+		seen[id] = struct{}{}
+	}
+	t.Logf("%s: %d 人", name, len(userIDs))
+}
+
+func TestGetV2ReportReadUserList(t *testing.T) {
+	reportID := getTestReportID(t)
+
+	userIDs, err := app.GetV2ReportReadUserList(reportID)
+	if err != nil {
+		t.Fatalf("获取日志已读人员列表出错: %v", err)
+	}
+
+	t.Logf("reportID=%s", reportID)
+	t.Logf("已读人员列表(完整):\n%s", spew.Sdump(userIDs))
+	assertUserIDList(t, "已读人员列表", userIDs)
+}
+
+func TestGetV2ReportCommentUserList(t *testing.T) {
+	reportID := getTestReportID(t)
+
+	userIDs, err := app.GetV2ReportCommentUserList(reportID)
+	if err != nil {
+		t.Fatalf("获取日志评论人员列表出错: %v", err)
+	}
+
+	t.Logf("reportID=%s", reportID)
+	t.Logf("评论人员列表(完整):\n%s", spew.Sdump(userIDs))
+	assertUserIDList(t, "评论人员列表", userIDs)
+}
+
+func TestGetV2ReportLikeUserList(t *testing.T) {
+	reportID := getTestReportID(t)
+
+	userIDs, err := app.GetV2ReportLikeUserList(reportID)
+	if err != nil {
+		t.Fatalf("获取日志点赞人员列表出错: %v", err)
+	}
+
+	t.Logf("reportID=%s", reportID)
+	t.Logf("点赞人员列表(完整):\n%s", spew.Sdump(userIDs))
+	assertUserIDList(t, "点赞人员列表", userIDs)
+}
+
 func TestCreateV2Report(t *testing.T) {
 	a_text := `
 `

@@ -309,6 +309,25 @@ type TDDReportTemplateList struct {
 	NextCursor   int64                   `json:"next_cursor"`
 }
 
+const (
+	DDReportStatisticsTypeRead    = 0
+	DDReportStatisticsTypeComment = 1
+	DDReportStatisticsTypeLike    = 2
+)
+
+type TDDReportStatisticsListByTypeRequest struct {
+	ReportID string `json:"report_id"`
+	Type     int    `json:"type"`
+	Offset   int64  `json:"offset"`
+	Size     int    `json:"size"`
+}
+
+type TDDReportStatisticsPage struct {
+	HasMore    bool     `json:"has_more"`
+	NextCursor int64    `json:"next_cursor"`
+	UserIDList []string `json:"userid_list"`
+}
+
 type TDDReportItem struct {
 	Contents     []TDDReportContent `json:"contents"`
 	CreateTime   int64              `json:"create_time"`
@@ -1486,6 +1505,90 @@ func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time str
 			return nil, errors.New(dingResp.ErrMsg)
 		}
 	}
+}
+
+// GetV2ReportStatisticsListByType 获取日志已读/评论/点赞人员列表（自动分页）
+// https://oapi.dingtalk.com/topapi/report/statistics/listbytype?access_token=ACCESS_TOKEN
+func (Self *TDingTalkApp) GetV2ReportStatisticsListByType(report_id string, listType int) ([]string, error) {
+	if listType != DDReportStatisticsTypeRead && listType != DDReportStatisticsTypeComment && listType != DDReportStatisticsTypeLike {
+		return nil, fmt.Errorf("无效的日志统计类型: %d", listType)
+	}
+
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	var allUserIDs []string
+	var offset int64 = 0
+	pageSize := 100
+
+	for {
+		ddurl := Self.ddurl + "/topapi/report/statistics/listbytype?access_token=" + Self.token.AccessToken
+		logs.Debug("访问接口：%s (获取日志相关人员列表) report_id=%s, type=%d, offset=%d", ddurl, report_id, listType, offset)
+
+		reqData := TDDReportStatisticsListByTypeRequest{
+			ReportID: report_id,
+			Type:     listType,
+			Offset:   offset,
+			Size:     pageSize,
+		}
+
+		var dingResp TDingTalkResponse
+		req := Self.newPost(ddurl)
+		if _, err := req.JSONBody(reqData); err != nil {
+			return nil, err
+		}
+		if err := req.ToJSON(&dingResp); err != nil {
+			return nil, err
+		}
+		statusCode, err := req.StatusCode()
+		if err != nil {
+			return nil, err
+		}
+		if statusCode != 200 {
+			return nil, fmt.Errorf("http status %d", statusCode)
+		}
+
+		switch dingResp.ErrCode {
+		case 0:
+			var page TDDReportStatisticsPage
+			err = json.Unmarshal(dingResp.Result, &page)
+			if err != nil {
+				return nil, err
+			}
+			allUserIDs = append(allUserIDs, page.UserIDList...)
+			logs.Debug("返回数据：本页 %d 个用户，累计 %d 个", len(page.UserIDList), len(allUserIDs))
+			if !page.HasMore || len(page.UserIDList) == 0 || page.NextCursor == offset {
+				return allUserIDs, nil
+			}
+			offset = page.NextCursor
+		case 503:
+			Self.token = nil
+			_, err = Self.GetAccessToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		default:
+			return nil, errors.New(dingResp.ErrMsg)
+		}
+	}
+}
+
+// GetV2ReportReadUserList 获取日志已读人员列表（自动分页）
+func (Self *TDingTalkApp) GetV2ReportReadUserList(report_id string) ([]string, error) {
+	return Self.GetV2ReportStatisticsListByType(report_id, DDReportStatisticsTypeRead)
+}
+
+// GetV2ReportCommentUserList 获取日志评论人员列表（自动分页）
+func (Self *TDingTalkApp) GetV2ReportCommentUserList(report_id string) ([]string, error) {
+	return Self.GetV2ReportStatisticsListByType(report_id, DDReportStatisticsTypeComment)
+}
+
+// GetV2ReportLikeUserList 获取日志点赞人员列表（自动分页）
+func (Self *TDingTalkApp) GetV2ReportLikeUserList(report_id string) ([]string, error) {
+	return Self.GetV2ReportStatisticsListByType(report_id, DDReportStatisticsTypeLike)
 }
 
 // CreateV2Report 创建用户日志

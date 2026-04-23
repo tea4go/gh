@@ -175,6 +175,22 @@ type TJsapiTicket struct {
 - **功能**: 获取用户在指定时间范围内的日志概要列表
 - **参数**: 同 `GetV2ReportList`
 
+**GetV2ReportStatisticsListByType(report_id string, listType int)** `([]string, error)`
+- **功能**: 获取日志相关人员列表（自动分页）
+- **参数**:
+  - `report_id` - 日志ID
+  - `listType` - 查询类型：`0` 已读、`1` 评论、`2` 点赞
+- **返回**: `userid_list`
+
+**GetV2ReportReadUserList(report_id string)** `([]string, error)`
+- **功能**: 获取日志已读人员列表
+
+**GetV2ReportCommentUserList(report_id string)** `([]string, error)`
+- **功能**: 获取日志评论人员列表
+
+**GetV2ReportLikeUserList(report_id string)** `([]string, error)`
+- **功能**: 获取日志点赞人员列表
+
 **CreateV2Report(userid, template_id, to_userids, a_text, b_text string)** `(string, error)`
 - **功能**: 创建用户日志
 - **参数**:
