@@ -1127,7 +1127,7 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
 		req.Param("access_token", Self.token.AccessToken)
 		req.Param("userid", userid)
-		req.Param("cursor", fmt.Sprintf("%d", cursor))
+		req.Param("offset", fmt.Sprintf("%d", cursor))
 		req.Param("size", fmt.Sprintf("%d", pageSize))
 		logs.Debug("访问接口：%s (获取用户可见的日志模板) cursor=%d", ddurl, cursor)
 
@@ -1143,9 +1143,10 @@ func (Self *TDingTalkApp) GetV2ReportTemplateList(userid string) ([]TDDReportTem
 			if err != nil {
 				return nil, err
 			}
+			fmt.Printf("page.TemplateList: %+v\n", page)
 			allItems = append(allItems, page.TemplateList...)
 			logs.Debug("返回数据：本页 %d 个日志模板，累计 %d 个", len(page.TemplateList), len(allItems))
-			if page.NextCursor == 0 || len(page.TemplateList) == 0 || page.NextCursor == cursor {
+			if page.NextCursor == 0 || len(page.TemplateList) == 0 {
 				return allItems, nil
 			}
 			cursor = page.NextCursor
