@@ -173,6 +173,9 @@ func main() {
 	case "report-list": // report-list <userid> <start> <end> 获取用户日志列表（详情）
 		requireArgs(cmd, args, 3)
 		cmdReportList(args[0], args[1], args[2])
+	case "report-simple-list-by-template": // report-simple-list-by-template-id <template_name> <start> <end> 获取用户日志列表（模板）
+		requireArgs(cmd, args, 2)
+		cmdReportSimpleListByTemplate(args[0], args[1])
 	case "report-simple-list": // report-simple-list <userid> <start> <end> 获取用户日志列表（简要）
 		requireArgs(cmd, args, 3)
 		cmdReportSimpleList(args[0], args[1], args[2])
@@ -406,6 +409,18 @@ func cmdReportList(userid, start, end string) {
 	fmt.Printf("日志列表 (%d 条):\n", len(list.DataList))
 	for i, item := range list.DataList {
 		fmt.Printf("  [%d] %s\n", i+1, item.TemplateName)
+	}
+}
+
+func cmdReportSimpleListByTemplate(templateName, start string) {
+	items, err := app.GetV2ReportSimpleListByTemplate(templateName, start)
+	if err != nil {
+		fmt.Printf("错误: %v\n", err)
+		return
+	}
+	fmt.Printf("简要日志列表 (%d 条):\n", len(items))
+	for i, item := range items {
+		fmt.Printf("  [%3d] id=%s, creator=%s (%s)\n", i+1, item.ReportID, item.CreatorName, item.DeptName)
 	}
 }
 

@@ -1271,6 +1271,68 @@ func (Self *TDingTalkApp) GetV2ReportList(userid, start_time, end_time string) (
 	}
 }
 
+// GetV2ReportTemplateCount 获取日志模板在指定时间范围内的日志
+func (Self *TDingTalkApp) GetV2ReportSimpleListByTemplate(template_name, start_time string) ([]TDDReportSimpleItem, error) {
+	// 处理时间格式：start_time 取当天 00:00:00，end_time 取当天 23:59:59
+	layout := "2006-01-02"
+	startTime, err := time.ParseInLocation(layout, start_time, time.Local)
+	if err != nil {
+		return nil, err
+	}
+
+	endTime := startTime.AddDate(0, 0, 180)
+
+	_, err = Self.GetAccessToken()
+	if err != nil {
+		return nil, err
+	}
+
+	var allItems []TDDReportSimpleItem
+	var cursor int64 = 0
+	pageSize := 20
+
+	for {
+		ddurl := Self.ddurl + "/topapi/report/simplelist"
+		req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+		req.Param("access_token", Self.token.AccessToken)
+		req.Param("template_name", template_name)
+		req.Param("start_time", fmt.Sprintf("%d", startTime.UnixMilli()))
+		req.Param("end_time", fmt.Sprintf("%d", endTime.UnixMilli()))
+		req.Param("cursor", fmt.Sprintf("%d", cursor))
+		req.Param("size", fmt.Sprintf("%d", pageSize))
+		logs.Debug("访问接口：%s (获取用户日志概要列表) cursor=%d, %s - %s", ddurl, cursor, start_time, endTime.Format(layout))
+
+		var dingResp TDingTalkResponse
+		err = req.ToJSON(&dingResp)
+		if err != nil {
+			return nil, err
+		}
+		switch dingResp.ErrCode {
+		case 0:
+			var page TDDReportSimpleList
+			err = json.Unmarshal(dingResp.Result, &page)
+			if err != nil {
+				return nil, err
+			}
+			allItems = append(allItems, page.DataList...)
+			logs.Debug("返回数据：本页 %d 个日志概要，累计 %d 个", len(page.DataList), len(allItems))
+			if !page.HasMore {
+				return allItems, nil
+			}
+			cursor = page.NextCursor
+		case 503:
+			Self.token = nil
+			_, err = Self.GetAccessToken()
+			if err != nil {
+				return nil, err
+			}
+			continue
+		default:
+			return nil, errors.New(dingResp.ErrMsg)
+		}
+	}
+}
+
 // GetV2ReportSimpleList 获取用户在指定时间范围内的日志概要列表（自动分页）
 // https://oapi.dingtalk.com/topapi/report/simplelist?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
 func (Self *TDingTalkApp) GetV2ReportSimpleList(userid, start_time, end_time string) ([]TDDReportSimpleItem, error) {
