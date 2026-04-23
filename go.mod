@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/chai2010/webp v1.1.1
+	github.com/davecgh/go-spew v1.1.1
 	github.com/dsoprea/go-exif v0.0.0-20230826092837-6579e82b732d
 	github.com/go-ldap/ldap/v3 v3.4.8
 	github.com/go-redis/redis/v8 v8.11.5
