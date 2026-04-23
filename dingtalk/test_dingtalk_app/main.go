@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -48,6 +50,13 @@ func initApp() {
 	// 标准程序块
 
 	app = dingtalk.GetDingTalkApp(clientID, clientSecret, corpId, agentId)
+
+	proxyURL, _ := url.Parse("http://192.168.190.163:32121")
+	httpTransport := &http.Transport{
+		Proxy: http.ProxyURL(proxyURL),
+	}
+
+	app.SetTransport(httpTransport)
 }
 
 func printJSON(v interface{}) {

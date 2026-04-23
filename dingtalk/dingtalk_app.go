@@ -420,43 +420,21 @@ func (Self *TDingTalkApp) SetTransport(transport http.RoundTripper) {
 	Self.transport = transport
 }
 
-func (Self *TDingTalkApp) requestTransport() http.RoundTripper {
-	if Self.transport == nil {
-		return nil
-	}
-	// http.Transport 是可变对象，请求侧使用克隆副本，避免多个请求共享状态。
-	if transport, ok := Self.transport.(*http.Transport); ok {
-		return transport.Clone()
-	}
-	return Self.transport
-}
-
-// newRequest 是 TDingTalkApp 的唯一 HTTP 入口。
-// 所有实例方法都应该经过这里创建请求，避免直接调用 network.HttpGet/HttpPost/HttpRequest*
-// 导致 SetTransport 注入的代理 transport 被绕过。
-func (Self *TDingTalkApp) newRequest(method, url string) *network.THttpRequest {
+// newGet/newPost 保留为向后兼容的轻量包装，真正的入口是 newRequest。
+func (Self *TDingTalkApp) newGet(url string) *network.THttpRequest {
 	var req *network.THttpRequest
-	switch method {
-	case http.MethodPost:
-		req = network.HttpPost(url)
-	default:
-		req = network.HttpGet(url)
-	}
+	req = network.HttpGet(url)
 	req.SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
-	if transport := Self.requestTransport(); transport != nil {
-		// 所有通过实例封装发出的请求都能自动继承代理 transport。
-		req.SetTransport(transport)
-	}
+	req.SetTransport(Self.transport)
 	return req
 }
 
-// newGet/newPost 保留为向后兼容的轻量包装，真正的入口是 newRequest。
-func (Self *TDingTalkApp) newGet(url string) *network.THttpRequest {
-	return Self.newRequest(http.MethodGet, url)
-}
-
 func (Self *TDingTalkApp) newPost(url string) *network.THttpRequest {
-	return Self.newRequest(http.MethodPost, url)
+	var req *network.THttpRequest
+	req = network.HttpPost(url)
+	req.SetTimeout(Self.timeout_connect, Self.timeout_readwrite)
+	req.SetTransport(Self.transport)
+	return req
 }
 
 // GetConfig is to return config in json
@@ -587,8 +565,8 @@ func (Self *TDingTalkApp) GetV2UserInfoByPhone(phone string) (*TDDV2User, error)
 	if err != nil {
 		return nil, err
 	}
-
 	ddurl := Self.ddurl + "/topapi/v2/user/getbymobile"
+	//req := network.HttpGet(ddurl).SetTimeout(Self.timeout_connect, Self.timeout_readwrite).SetTransport(Self.transport)
 	req := Self.newGet(ddurl)
 	req.Param("access_token", Self.token.AccessToken)
 	req.Param("mobile", phone)
