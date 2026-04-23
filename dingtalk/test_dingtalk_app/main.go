@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	flag "github.com/spf13/pflag"
 	dingtalk "github.com/tea4go/gh/dingtalk"
@@ -420,7 +421,7 @@ func cmdReportSimpleListByTemplate(templateName, start string) {
 	}
 	fmt.Printf("简要日志列表 (%d 条):\n", len(items))
 	for i, item := range items {
-		fmt.Printf("  [%3d] id=%s, creator=%s (%s)\n", i+1, item.ReportID, item.CreatorName, item.DeptName)
+		fmt.Printf("  [%3d] id=%s, creator=%s (%s), 创建时间=%s\n", i+1, item.ReportID, item.CreatorName, item.DeptName, time.Unix(item.CreateTime/1000, 0).Format("2006-01-02 15:04"))
 	}
 }
 
