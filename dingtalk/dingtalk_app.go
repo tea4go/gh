@@ -292,12 +292,22 @@ type TDDReportTemplateField struct {
 	Type      int    `json:"type"`
 	Sort      int    `json:"sort"`
 }
+type TDDReportTemplateDefaultReceiver struct {
+	UserName string `json:"user_name"`
+	UserID   string `json:"userid"`
+}
+type TDDReportTemplateDefaultReceivedConv struct {
+	ConversationID string `json:"conversation_id"`
+	Title          string `json:"title"`
+}
 type TDDReportTemplate struct {
-	Fields       []TDDReportTemplateField `json:"fields"`
-	UserID       string                   `json:"userid"`
-	UserName     string                   `json:"user_name"`
-	TemplateID   string                   `json:"id"`
-	TemplateName string                   `json:"name"`
+	Fields               []TDDReportTemplateField               `json:"fields"`
+	UserID               string                                 `json:"userid"`
+	UserName             string                                 `json:"user_name"`
+	TemplateID           string                                 `json:"id"`
+	TemplateName         string                                 `json:"name"`
+	DefaultReceivers     []TDDReportTemplateDefaultReceiver     `json:"default_receivers"`
+	DefaultReceivedConvs []TDDReportTemplateDefaultReceivedConv `json:"default_received_convs"`
 }
 
 type TDDReportTemplateItem struct {
@@ -375,6 +385,16 @@ type TDDCreateReportParam struct {
 	ToChat     bool                     `json:"to_chat"`           // 是否发送到群聊
 	DDFrom     string                   `json:"dd_from,omitempty"` // 来源
 	UserID     string                   `json:"userid"`            // 创建人用户ID
+}
+
+type TDDCreateReportParamV2 struct {
+	TemplateID string                   `json:"template_id"`
+	Contents   []TDDCreateReportContent `json:"contents"`
+	ToUserIDs  []string                 `json:"to_userids"`
+	ToCIDs     []string                 `json:"to_cids,omitempty"`
+	ToChat     bool                     `json:"to_chat"`
+	DDFrom     string                   `json:"dd_from,omitempty"`
+	UserID     string                   `json:"userid"`
 }
 
 type TDingTalkApp struct {
@@ -1576,6 +1596,77 @@ func (Self *TDingTalkApp) GetV2ReportLikeUserList(report_id string) ([]string, e
 
 // CreateV2Report 创建用户日志
 // https://oapi.dingtalk.com/topapi/v2/report/create?access_token=ACCESS_TOKEN&userid=userid&start_time=start_time&end_time=end_time
+func (Self *TDingTalkApp) CreateV2ReportWithContents(userid, templateID string, contents []TDDCreateReportContent, toUserIDs []string, toCIDs []string, toChat bool) (string, error) {
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return "", err
+	}
+
+	ddurl := Self.ddurl + "/topapi/report/create?access_token=" + Self.token.AccessToken
+	logs.Debug("访问接口：%s (创建用户日志)", ddurl)
+
+	reportParam := TDDCreateReportParamV2{
+		UserID:     userid,
+		TemplateID: templateID,
+		Contents:   contents,
+		ToUserIDs:  normalizeNonEmptyStrings(toUserIDs),
+		ToCIDs:     normalizeNonEmptyStrings(toCIDs),
+		DDFrom:     "ygx",
+	}
+	reportParam.ToChat = toChat || len(reportParam.ToCIDs) > 0
+
+	var dingResp struct {
+		ErrCode   int    `json:"errcode"`
+		ErrMsg    string `json:"errmsg"`
+		Result    string `json:"result"`
+		RequestID string `json:"request_id"`
+	}
+	reqData := map[string]any{
+		"create_report_param": reportParam,
+	}
+	req := Self.newPost(ddurl)
+	if _, err := req.JSONBody(reqData); err != nil {
+		return "", err
+	}
+	if err := req.ToJSON(&dingResp); err != nil {
+		return "", err
+	}
+	statusCode, err := req.StatusCode()
+	if err != nil {
+		return "", err
+	}
+	if statusCode != 200 {
+		return "", fmt.Errorf("http status %d", statusCode)
+	}
+
+	switch dingResp.ErrCode {
+	case 0:
+		return dingResp.Result, nil
+	case 503:
+		Self.token = nil
+		return Self.CreateV2ReportWithContents(userid, templateID, contents, toUserIDs, toCIDs, toChat)
+	default:
+		return "", errors.New(dingResp.ErrMsg + ",RequestID: " + dingResp.RequestID)
+	}
+}
+
+func normalizeNonEmptyStrings(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		normalized := strings.TrimSpace(value)
+		if normalized == "" {
+			continue
+		}
+		if _, exists := seen[normalized]; exists {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
+}
+
 func (Self *TDingTalkApp) CreateV2Report(userid, template_id, to_userids, a_text, b_text string) (string, error) {
 	_, err := Self.GetAccessToken()
 	if err != nil {
