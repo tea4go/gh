@@ -1,0 +1,10 @@
+[package]
+name = "testclient_rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+chrono = "0.4"
+rand = "0.8"
+ctrlc = "3"
