@@ -38,12 +38,13 @@ func handleConnection(conn net.Conn) {
 
 	for {
 		message := make([]byte, 1024)
-		_, err := conn.Read(message)
+		n, err := conn.Read(message)
 		if err != nil {
 			return
 		}
-		if !strings.Contains(string(message), "{HeartBeat}") {
-			fmt.Printf("%s", message)
+		msg := string(message[:n])
+		if !strings.Contains(msg, "{HeartBeat}") {
+			fmt.Printf("%s", msg)
 		}
 	}
 }
