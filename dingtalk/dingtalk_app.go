@@ -57,6 +57,13 @@ type TJsapiTicket struct {
 	CreateDate  time.Time
 }
 
+type TOpenConversationIDInfo struct {
+	Code               string `json:"code,omitempty"`
+	Message            string `json:"message,omitempty"`
+	RequestID          string `json:"requestId,omitempty"`
+	OpenConversationID string `json:"openConversationId,omitempty"`
+}
+
 // String 转换为字符串
 func (Self *TJsapiTicket) String() string {
 	s, _ := json.Marshal(Self)
@@ -551,6 +558,69 @@ func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
 }
 
 // GetAdmins 获取管理员列表
+// {"sys_level":2,"userid":"userid2"},
+// https://oapi.dingtalk.com/user/get_admin?access_token=ACCESS_TOKEN
+// GetOpenConversationIDByChatID 鏍规嵁 chatId 鑾峰彇 openConversationId
+func (Self *TDingTalkApp) GetOpenConversationIDByChatID(chatID string) (string, error) {
+	chatID = strings.TrimSpace(chatID)
+	if chatID == "" {
+		return "", errors.New("chatID is empty")
+	}
+
+	_, err := Self.GetAccessToken()
+	if err != nil {
+		return "", err
+	}
+
+	escapedChatID := strings.ReplaceAll(chatID, "/", "%2F")
+	ddurl := "https://api.dingtalk.com/v1.0/im/chat/" + escapedChatID + "/convertToOpenConversationId"
+	req := Self.newPost(ddurl)
+	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
+	logs.Debug("璁块棶鎺ュ彛锛?s (鏍规嵁chatId鑾峰彇openConversationId)", ddurl)
+
+	var info TOpenConversationIDInfo
+	if err := req.ToJSON(&info); err != nil {
+		return "", err
+	}
+
+	statusCode, err := req.StatusCode()
+	if err != nil {
+		return "", err
+	}
+
+	if statusCode == http.StatusUnauthorized {
+		Self.token = nil
+		return Self.GetOpenConversationIDByChatID(chatID)
+	}
+	if statusCode != http.StatusOK {
+		if info.Message != "" {
+			if info.RequestID != "" {
+				return "", fmt.Errorf("%s,RequestID: %s", info.Message, info.RequestID)
+			}
+			return "", errors.New(info.Message)
+		}
+		return "", fmt.Errorf("http status %d", statusCode)
+	}
+	if info.Code != "" {
+		if info.RequestID != "" {
+			return "", fmt.Errorf("%s,RequestID: %s", info.Message, info.RequestID)
+		}
+		if info.Message != "" {
+			return "", errors.New(info.Message)
+		}
+		return "", errors.New(info.Code)
+	}
+
+	info.OpenConversationID = strings.TrimSpace(info.OpenConversationID)
+	if info.OpenConversationID == "" {
+		return "", errors.New("openConversationId is empty")
+	}
+
+	logs.Debug("杩斿洖鏁版嵁锛?s", utils.GetShowKey(info.OpenConversationID))
+	return info.OpenConversationID, nil
+}
+
+// GetAdmins 鑾峰彇绠＄悊鍛樺垪琛?
 // {"sys_level":2,"userid":"userid2"},
 // https://oapi.dingtalk.com/user/get_admin?access_token=ACCESS_TOKEN
 func (Self *TDingTalkApp) GetAdmins() (*TAdmins, error) {
@@ -1613,7 +1683,7 @@ func (Self *TDingTalkApp) CreateV2ReportWithContents(userid, templateID string, 
 		ToCIDs:     normalizeNonEmptyStrings(toCIDs),
 		DDFrom:     "ygx",
 	}
-	reportParam.ToChat = toChat || len(reportParam.ToCIDs) > 0
+	reportParam.ToChat = toChat
 
 	var dingResp struct {
 		ErrCode   int    `json:"errcode"`

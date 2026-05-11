@@ -85,6 +85,11 @@ type TJsapiTicket struct {
 - **功能**: 获取JSAPI Ticket（自动缓存和刷新）
 - **返回**: Ticket字符串和错误信息
 
+**GetOpenConversationIDByChatID(chatID string)** `(string, error)`
+- **鍔熻兘**: 鏍规嵁缇?`chatId` 鑾峰彇 `openConversationId`
+- **鍙傛暟**: `chatID` - 缇や細璇?`chatId`
+- **杩斿洖**: `openConversationId` 鍜岄敊璇俊鎭?
+
 **GetConfig(nonceStr, timestamp, url string)** `(string, error)`
 - **功能**: 获取钉钉H5微应用JSAPI鉴权配置
 - **参数**:

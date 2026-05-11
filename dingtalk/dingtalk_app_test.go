@@ -1,4 +1,4 @@
-package dingtalk
+﻿package dingtalk
 
 import (
 	"fmt"
@@ -57,6 +57,23 @@ func TestGetJSAPITicket(t *testing.T) {
 	}
 
 	t.Logf("JsapiTicket: %s", pkey)
+}
+
+func TestGetOpenConversationIDByChatID(t *testing.T) {
+	chatID := strings.TrimSpace("chatb16e8c26be59e0212e9fa829970ac6a9")
+	if chatID == "" {
+		t.Skip("skip without DINGTALK_TEST_CHAT_ID")
+	}
+
+	openConversationID, err := app.GetOpenConversationIDByChatID(chatID)
+	if err != nil {
+		t.Fatalf("鑾峰彇 openConversationId 鍑洪敊: %v", err)
+	}
+	if strings.TrimSpace(openConversationID) == "" {
+		t.Fatalf("杩斿洖鐨 openConversationId 涓虹┖")
+	}
+
+	t.Logf("openConversationId: %s", openConversationID)
 }
 
 func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
