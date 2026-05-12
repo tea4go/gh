@@ -557,10 +557,7 @@ func (Self *TDingTalkApp) GetJSAPITicket() (string, error) {
 	return reqData.JsapiTicket, nil
 }
 
-// GetAdmins 获取管理员列表
-// {"sys_level":2,"userid":"userid2"},
-// https://oapi.dingtalk.com/user/get_admin?access_token=ACCESS_TOKEN
-// GetOpenConversationIDByChatID 鏍规嵁 chatId 鑾峰彇 openConversationId
+// GetOpenConversationIDByChatID 根据 chatId 获取 openConversationId
 func (Self *TDingTalkApp) GetOpenConversationIDByChatID(chatID string) (string, error) {
 	chatID = strings.TrimSpace(chatID)
 	if chatID == "" {
@@ -576,7 +573,7 @@ func (Self *TDingTalkApp) GetOpenConversationIDByChatID(chatID string) (string, 
 	ddurl := "https://api.dingtalk.com/v1.0/im/chat/" + escapedChatID + "/convertToOpenConversationId"
 	req := Self.newPost(ddurl)
 	req.Header("x-acs-dingtalk-access-token", Self.token.AccessToken)
-	logs.Debug("璁块棶鎺ュ彛锛?s (鏍规嵁chatId鑾峰彇openConversationId)", ddurl)
+	logs.Debug("访问接口：%s (根据 chatId 获取 openConversationId)", ddurl)
 
 	var info TOpenConversationIDInfo
 	if err := req.ToJSON(&info); err != nil {
@@ -615,8 +612,7 @@ func (Self *TDingTalkApp) GetOpenConversationIDByChatID(chatID string) (string, 
 	if info.OpenConversationID == "" {
 		return "", errors.New("openConversationId is empty")
 	}
-
-	logs.Debug("杩斿洖鏁版嵁锛?s", utils.GetShowKey(info.OpenConversationID))
+	logs.Debug("返回数据：%s", utils.GetShowKey(info.OpenConversationID))
 	return info.OpenConversationID, nil
 }
 

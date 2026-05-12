@@ -1,4 +1,4 @@
-﻿package dingtalk
+package dingtalk
 
 import (
 	"fmt"
@@ -67,10 +67,10 @@ func TestGetOpenConversationIDByChatID(t *testing.T) {
 
 	openConversationID, err := app.GetOpenConversationIDByChatID(chatID)
 	if err != nil {
-		t.Fatalf("鑾峰彇 openConversationId 鍑洪敊: %v", err)
+		t.Fatalf("获取 openConversationId 出错: %v", err)
 	}
 	if strings.TrimSpace(openConversationID) == "" {
-		t.Fatalf("杩斿洖鐨 openConversationId 涓虹┖")
+		t.Fatalf("返回的 openConversationId 为空")
 	}
 
 	t.Logf("openConversationId: %s", openConversationID)
