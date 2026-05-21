@@ -1,3 +1,3 @@
 package gh
 
-var version = "v1.2.2"
+var version = "v1.3.7"
