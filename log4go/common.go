@@ -334,6 +334,7 @@ func StartLogger(log_names ...string) {
 		FDebug("SetLogger(console,%d,%s) - %v", log_level, log_name, err)
 	}
 
+	FDebug("GetParamBool(\"log_fdebug\",Env[%s])", os.Getenv("log_fdebug"))
 	FDebug("GetParamInt(\"log_level\",Env[%s],Param[%d])", os.Getenv("log_level"), *plog_level)
 	FDebug("GetParamBool(\"log_short\",Env[%s],Param[%t])", os.Getenv("log_short"), *plog_short)
 	FDebug("GetParamString(\"log_name\",Env[%s],Default[%s],Param[%s])", os.Getenv("log_name"), "", *plog_name)

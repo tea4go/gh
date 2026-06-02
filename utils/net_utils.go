@@ -180,6 +180,25 @@ func GetIPAdressByPrefix(prefix string) string {
 	}
 	return ip_addr
 }
+
+// 根据网卡名称获取其第一个 IPv4 地址
+func GetIPAdressByName(name string) string {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return ""
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipNet, ok := addr.(*net.IPNet); ok && ipNet.IP.To4() != nil {
+			return ipNet.IP.String()
+		}
+	}
+	return ""
+}
+
 func GetAllIPAdress() string {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
