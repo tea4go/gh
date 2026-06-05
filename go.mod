@@ -1,6 +1,6 @@
 module github.com/tea4go/gh
 
-go 1.22
+go 1.20
 
 require (
 	github.com/chai2010/webp v1.1.1
@@ -17,7 +17,7 @@ require (
 	github.com/nutsdb/nutsdb v1.0.4
 	github.com/openstandia/goldap/message v0.0.0-20191227184744-b5528a3af20f
 	github.com/pires/go-proxyproto v0.7.0
-	github.com/schollz/progressbar/v3 v3.18.0
+	github.com/schollz/progressbar/v3 v3.14.6
 	github.com/shiena/ansicolor v0.0.0-20230509054315-a9deabde6e02
 	github.com/smartystreets/goconvey v1.8.1
 	github.com/spf13/pflag v1.0.5
