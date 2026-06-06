@@ -2,6 +2,7 @@ package utils
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type SingletonInitFunc func() (interface{}, error)
@@ -20,18 +21,18 @@ type TSingleton struct {
 	sync.Mutex
 	data      interface{}
 	init_func SingletonInitFunc
-	init_flag bool
+	init_flag atomic.Bool
 }
 
 func (s *TSingleton) GetSingleton() (interface{}, error) {
-	if s.init_flag {
+	if s.init_flag.Load() {
 		return s.data, nil
 	}
 
 	s.Lock()
 	defer s.Unlock()
 
-	if s.init_flag {
+	if s.init_flag.Load() {
 		return s.data, nil
 	}
 
@@ -41,6 +42,6 @@ func (s *TSingleton) GetSingleton() (interface{}, error) {
 		return nil, err
 	}
 
-	s.init_flag = true
+	s.init_flag.Store(true)
 	return s.data, nil
 }

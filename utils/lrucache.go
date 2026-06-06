@@ -38,6 +38,9 @@ type TLruCache struct {
 }
 
 func (this *TLruCache) Get(key string) interface{} {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
 	elem, ok := this.itemMap[key]
 	if !ok {
 		return nil
@@ -88,6 +91,9 @@ func (this *TLruCache) Delete(key string) {
 }
 
 func (this *TLruCache) IsExist(key string) bool {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
 	if _, ok := this.itemMap[key]; ok {
 		return true
 	}
@@ -105,6 +111,9 @@ func (this *TLruCache) ClearAll() {
 }
 
 func (this *TLruCache) Len() int {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
 	return this.itemList.Len()
 }
 

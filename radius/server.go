@@ -245,32 +245,31 @@ func (s *Server) ListenAndServe() error {
 				Identifier: packet.Identifier,
 			}
 
-			activeLock.RLock()
-			_, ok := active[key]
-			if ok {
-				activeLock.RUnlock()
-				logs.Warning("[%s]==>接收到的重复请求包(#%d)，当前%d个正在处理。", remoteAddr, packet.Identifier, len(active))
+			// 标记当前请求为"处理中"。active 的读改写必须在同一把写锁内完成，
+			// 否则并发 map 写会触发 fatal error: concurrent map writes。
+			tryAcquire := func() (bool, int) {
+				activeLock.Lock()
+				defer activeLock.Unlock()
+				if _, ok := active[key]; ok {
+					return false, len(active)
+				}
+				active[key] = true
+				return true, len(active)
+			}
+
+			if ok, n := tryAcquire(); !ok {
+				logs.Warning("[%s]==>接收到的重复请求包(#%d)，当前%d个正在处理。", remoteAddr, packet.Identifier, n)
 				t := time.NewTicker(5000 * time.Millisecond)
-				exit_flag := false
-				for !exit_flag {
-					select {
-					case <-t.C:
-						activeLock.RLock()
-						_, ok := active[key]
-						if ok {
-							activeLock.RUnlock()
-							logs.Warning("[%s]==>接收到的重复请求包(#%d)，当前%d个正在处理。 ", remoteAddr, packet.Identifier, len(active))
-						} else {
-							active[key] = true
-							activeLock.RUnlock()
-							exit_flag = true
-							logs.Warning("[%s]==>接收到的重复请求包(#%d)已经处理完成，目前%d个正在处理。 ", remoteAddr, packet.Identifier, len(active))
-						}
+				for {
+					<-t.C
+					if acquired, m := tryAcquire(); acquired {
+						logs.Warning("[%s]==>接收到的重复请求包(#%d)已经处理完成，目前%d个正在处理。", remoteAddr, packet.Identifier, m)
+						break
+					} else {
+						logs.Warning("[%s]==>接收到的重复请求包(#%d)，当前%d个正在处理。", remoteAddr, packet.Identifier, m)
 					}
 				}
-			} else {
-				active[key] = true
-				activeLock.RUnlock()
+				t.Stop()
 			}
 
 			response := responseWriter{

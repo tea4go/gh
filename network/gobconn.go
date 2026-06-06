@@ -72,15 +72,13 @@ type msgStruct struct {
 	StructName string
 }
 
-var (
-	rheadMsg = msgStruct{}
-	wheadMsg = msgStruct{}
-)
-
 func (self *gobConnection) Read() (msg message, err error) {
 	self.rlock.Lock()
 	defer self.rlock.Unlock()
 
+	// rheadMsg 必须是函数局部变量：此前是包级全局变量，多个连接并发 Read 会同时
+	// 读写同一个 rheadMsg（每个连接的 rlock 只保护自身，保护不了共享全局），造成数据竞争。
+	var rheadMsg msgStruct
 	err = self.dec.Decode(&rheadMsg)
 	if err != nil {
 		return
@@ -104,6 +102,8 @@ func (self *gobConnection) Read() (msg message, err error) {
 
 func (self *gobConnection) Write(msg interface{}) (err error) {
 	self.wlock.Lock()
+	// wheadMsg 同理改为函数局部变量，避免多个连接并发 Write 共享全局变量产生数据竞争。
+	var wheadMsg msgStruct
 	value := reflect.ValueOf(msg)
 	if value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr {
 		wheadMsg.StructName = value.Elem().Type().String()
