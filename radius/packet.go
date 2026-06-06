@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	logs "github.com/tea4go/gh/log4go"
+	"github.com/tea4go/gh/utils"
 )
 
 // maximum RADIUS packet size
@@ -78,7 +79,7 @@ func NewPacket(code Code, secret []byte) *TDataPacket {
 
 func (p *TDataPacket) String() string {
 	packet_text := ""
-	temp_text := fmt.Sprintf("数据包[Code=%d,Identifier=%d,Secret=%s]", p.Code, p.Identifier, p.Secret)
+	temp_text := fmt.Sprintf("数据包[Code=%d,Identifier=%d,Secret=%s]", p.Code, p.Identifier, utils.GetShowPassword(string(p.Secret)))
 	packet_text = packet_text + temp_text
 	for k, v := range p.AttrItems {
 		dict := p.Dictionary.IdItems[v.AttrId]

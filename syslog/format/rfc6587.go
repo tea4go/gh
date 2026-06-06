@@ -34,6 +34,10 @@ func rfc6587ScannerSplit(data []byte, atEOF bool) (advance int, token []byte, er
 			return 0, nil, err
 		}
 		end := length + i + 1
+		// 防止恶意/畸形长度导致整型溢出或负值，进而 data[i+1:end] 越界 panic
+		if length < 0 || end < i+1 {
+			return 0, nil, strconv.ErrRange
+		}
 		if len(data) >= end {
 			// Return the frame with the length removed
 			return end, data[i+1 : end], nil

@@ -117,9 +117,10 @@ func (c *connWriter) connect_tcp_proxy(tos ...time.Duration) error {
 			Timeout:   to,
 			KeepAlive: 30 * time.Second,
 		}
-		dialer_proxy, err := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
-		if err != nil {
-			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(err))
+		dialer_proxy, perr := proxy.SOCKS5("tcp", proxyAddr, nil, dialer)
+		if perr != nil {
+			FDebug("Connect() : 设置代理服务器失败(%s)，%s", proxyAddr, GetNetError(perr))
+			return perr
 		}
 		conn, err = dialer_proxy.Dial(c.Net, c.Addr)
 	} else {

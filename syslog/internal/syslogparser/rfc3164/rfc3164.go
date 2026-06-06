@@ -230,6 +230,10 @@ func (p *Parser) parseTag() (string, int, error) {
 				pid = 0
 			}
 			p.cursor++
+			// 防止 PID 终止符位于缓冲区末尾时越界 panic
+			if p.cursor >= p.l {
+				break
+			}
 			b = p.buff[p.cursor]
 			tag_e = (b == ':' || b == ' ')
 			if tag_e {

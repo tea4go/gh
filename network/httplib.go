@@ -851,7 +851,7 @@ func HttpRequest(method, url string, is_cookie bool,
 		req.Body(body_str)
 	}
 	if username+password != "" {
-		logs.FDebug("===> SetBasicAuth(%s/%s)", username, password)
+		logs.FDebug("===> SetBasicAuth(%s/%s)", username, utils.GetShowPassword(password))
 		req.SetBasicAuth(username, password)
 	}
 
@@ -1270,21 +1270,21 @@ func BasicAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		logs.Debug("Http.BasicAuth() : 共有 %d 个可鉴权用户，传入参数：%s/%s", len(validUsers), username, password)
+		logs.Debug("Http.BasicAuth() : 共有 %d 个可鉴权用户，传入参数：%s/%s", len(validUsers), username, utils.GetShowPassword(password))
 
 		// 验证用户名和密码
 		username = strings.ToLower(username)
 		password = strings.ToLower(password)
 		validPassword, userExists := validUsers[username]
 		if !userExists || password != validPassword {
-			msg = fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
+			msg = fmt.Sprintf("用户或密码错误(%s:%s)", username, utils.GetShowPassword(password))
 			logs.Error(msg)
 			http.Error(w, `{"errno":402,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}
 
 		msg = "验证通过"
-		logs.Debug("Http.BasicAuth() : %s (%s/%s)", msg, username, password)
+		logs.Debug("Http.BasicAuth() : %s (%s/%s)", msg, username, utils.GetShowPassword(password))
 		// 验证通过，调用下一个处理器
 		next(w, r)
 	}
@@ -1312,7 +1312,7 @@ func BasicAuth2(next http.Handler) http.Handler {
 		// 验证用户名和密码
 		validPassword, userExists := validUsers[username]
 		if !userExists || password != validPassword {
-			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, password)
+			msg := fmt.Sprintf("用户或密码错误(%s:%s)", username, utils.GetShowPassword(password))
 			http.Error(w, `{"errno":402,"errmsg":"`+msg+`"}`, http.StatusUnauthorized)
 			return
 		}

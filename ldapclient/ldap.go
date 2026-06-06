@@ -163,6 +163,10 @@ func (lc *TLdapClient) Bind(username, password string) (success bool, err error)
 	if lc.IsClosing() {
 		return false, fmt.Errorf("服务器未连接，请先连接服务器！")
 	}
+	// 空密码会触发 LDAP 匿名(unauthenticated)绑定，多数服务器会返回成功，导致认证绕过
+	if password == "" {
+		return false, fmt.Errorf("密码不能为空！")
+	}
 	err = lc.Conn.Bind(username, password)
 	if err != nil {
 		return
@@ -174,6 +178,10 @@ func (lc *TLdapClient) Bind(username, password string) (success bool, err error)
 func (lc *TLdapClient) Auth(username, password string) (success bool, err error) {
 	if lc.IsClosing() {
 		return false, fmt.Errorf("服务器未连接，请先连接服务器！")
+	}
+	// 空密码会触发 LDAP 匿名(unauthenticated)绑定，多数服务器会返回成功，导致认证绕过
+	if password == "" {
+		return false, fmt.Errorf("密码不能为空！")
 	}
 	searchRequest := ldap.NewSearchRequest(
 		lc.BaseDn,

@@ -87,6 +87,11 @@ func (p *TPing) Ping(ctx context.Context) *ping.TStats {
 	stats.Duration = time.Since(start)
 	//#endregion
 
+	// 探测结束后关闭连接，避免每次 Ping 泄露一个 socket
+	if conn != nil {
+		defer conn.Close()
+	}
+
 	if err != nil {
 		stats.Error = err
 		if oe, ok := err.(*net.OpError); ok && oe.Addr != nil {

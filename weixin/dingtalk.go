@@ -11,6 +11,7 @@ import (
 
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/network"
+	"github.com/tea4go/gh/utils"
 )
 
 //curl 'https://oapi.dingtalk.com/robot/send?access_token=xxx' \
@@ -419,7 +420,7 @@ func (Self *TDingTalkClient) GetAccessToken() (string, error) {
 		info.ExpiresIn = 7200
 		info.CreateDate = time.Now()
 		Self.token = &info
-		logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... OK (%s)", info.AccessToken)
+		logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... OK (%s)", utils.GetShowKey(info.AccessToken))
 		return info.AccessToken, nil
 	} else {
 		logs.Debug("GetAccessToken() : 获取钉钉Token信息 ...... Not OK %s(%d)", info.ErrMsg, info.ErrCode)

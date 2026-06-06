@@ -510,7 +510,7 @@ func init() {
 	pVerServer = flag.StringP("update_server", "", "", "版本服务器。")
 	prestart = flag.BoolP(`restart`, ``, false, `升级后是否重启程序。`)
 	flag.CommandLine.MarkHidden("restart")
-	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", keyId, "")
+	logs.FDebug("GetParamString(\"BASH_KEY\",Env[%s],Default[%s],Param[])", utils.GetShowKey(keyId), "")
 	if keyId != "" {
 		ppublish = flag.BoolP("publish", "", false, "发布新版本。")
 	}

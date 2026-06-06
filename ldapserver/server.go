@@ -140,6 +140,7 @@ func (s *Server) serve() {
 				continue
 			}
 			logs.Error("创建本地连接失败，%s", err.Error())
+			continue
 		}
 
 		//判断是否白名单
