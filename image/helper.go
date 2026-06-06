@@ -36,9 +36,12 @@ type TExif struct {
 
 func get_tag_bytes(ex *TExif) []byte {
 	bs, _ := json.MarshalIndent(ex, "", "  ")
-	var data []byte
-	data = make([]byte, 1024-len(bs))
-
+	//固定返回 1024 字节：超出则截断，避免 make([]byte, 1024-len(bs)) 负长度 panic；
+	//不足则补零，保证调用方 apbuf[:1024] 不越界。
+	if len(bs) >= 1024 {
+		return bs[:1024]
+	}
+	data := make([]byte, 1024-len(bs))
 	return append(bs, data...)
 }
 
@@ -171,7 +174,7 @@ func ImageConv(filePath, outPath, outMPath string, quality float32, desWidth int
 
 	reader := bytes.NewReader(data)
 	reader2 := bytes.NewReader(data)
-	var imgtype = http.DetectContentType(data[:512])
+	var imgtype = http.DetectContentType(data)
 	if strings.Contains(imgtype, "jpeg") {
 		img, _ = jpeg.Decode(reader)
 		img2, _ := jpeg.DecodeConfig(reader2)
@@ -277,7 +280,7 @@ func Image2Webp(filePath, outPath string, quality float32) error {
 	}
 
 	var img image.Image
-	var imgtype = http.DetectContentType(data[:512])
+	var imgtype = http.DetectContentType(data)
 	reader := bytes.NewReader(data)
 	if strings.Contains(imgtype, "jpeg") {
 		img, err = jpeg.Decode(reader)
@@ -338,7 +341,7 @@ func Image2Thumbnail(filePath, outPath string, desWidth int, desHeight int) erro
 
 	reader := bytes.NewReader(data)
 	reader2 := bytes.NewReader(data)
-	var imgtype = http.DetectContentType(data[:512])
+	var imgtype = http.DetectContentType(data)
 	if strings.Contains(imgtype, "jpeg") {
 		img, _ = jpeg.Decode(reader)
 		img2, _ := jpeg.DecodeConfig(reader2)

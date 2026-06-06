@@ -76,12 +76,18 @@ func (Self JsonTime) FromString(data string) error {
 // IsAscii 判断字符串是否只包含 ASCII 字符
 func IsAscii(text_str string) bool {
 	temp := []rune(text_str)
+	if len(temp) == 0 {
+		return false
+	}
 	return (temp[0] >= '0' && temp[0] <= '9') || (temp[0] >= 'a' && temp[0] <= 'z') || (temp[0] >= 'A' && temp[0] <= 'Z')
 }
 
 // IsNumber 判断字符串是否是数字
 func IsNumber(text_str string) bool {
 	temp := []rune(text_str)
+	if len(temp) == 0 {
+		return false
+	}
 	return unicode.IsDigit(temp[0])
 }
 

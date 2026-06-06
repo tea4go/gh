@@ -56,14 +56,21 @@ func (this *TAESEncrypt) Decrypt(ciphertext string) ([]byte, error) {
 		return nil, err
 	}
 
+	blockSize := aesBlockEncrypter.BlockSize()
+	data := []byte(ciphertext)
+	//CryptBlocks 要求输入长度为块大小的非零整数倍，否则会 panic
+	if len(data) == 0 || len(data)%blockSize != 0 {
+		return nil, fmt.Errorf("密文长度%d无效，必须是块大小%d的非零整数倍", len(data), blockSize)
+	}
+
 	aesEncrypter := cipher.NewCBCDecrypter(aesBlockEncrypter, this.IV)
-	content := make([]byte, len(ciphertext))
-	aesEncrypter.CryptBlocks(content, []byte(ciphertext))
+	content := make([]byte, len(data))
+	aesEncrypter.CryptBlocks(content, data)
 
 	if this.ZeroPad {
-		content = this.ZeroUnPadding(content, aesBlockEncrypter.BlockSize())
+		content = this.ZeroUnPadding(content, blockSize)
 	} else {
-		content = this.PKCS5UnPadding(content, aesBlockEncrypter.BlockSize())
+		content = this.PKCS5UnPadding(content, blockSize)
 	}
 
 	return content, nil
@@ -94,7 +101,14 @@ func (this *TAESEncrypt) PKCS5Padding(ciphertext []byte, blockSize int) []byte {
 // PKCS5UnPadding 去除PKCS5填充
 func (this *TAESEncrypt) PKCS5UnPadding(ciphertext []byte, blockSize int) []byte {
 	length := len(ciphertext)
+	if length == 0 {
+		return ciphertext
+	}
 	unpadding := int(ciphertext[length-1])
+	//防止非法填充值导致负向切片越界
+	if unpadding <= 0 || unpadding > length {
+		return ciphertext
+	}
 	return ciphertext[:(length - unpadding)]
 }
 
@@ -126,7 +140,10 @@ func AesDecrypt(key, test_str string) (string, error) {
 	}
 	aes := TAESEncrypt{}
 	aes.Init(key)
-	pass, _ := aes.Decrypt(string(temp_text))
+	pass, err := aes.Decrypt(string(temp_text))
+	if err != nil {
+		return "", err
+	}
 	return string(pass), nil
 }
 

@@ -145,7 +145,7 @@ func ParsePacket(data, secret []byte, dictionary *TDictionary) (*TDataPacket, er
 		}
 
 		attrLength := attributes[1]
-		if attrLength < 1 || attrLength > 253 || len(attributes) < int(attrLength) {
+		if attrLength < 2 || attrLength > 253 || len(attributes) < int(attrLength) {
 			return nil, fmt.Errorf("无效属性长度%d(2-%d)", attrLength, 253)
 		}
 		attrType := attributes[0]

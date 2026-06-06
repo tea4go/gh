@@ -113,7 +113,11 @@ type icmpEcho struct {
 }
 
 func (p *icmpEcho) String() string {
-	return fmt.Sprintf("Id=%d,Seq=%d,Data=%s", p.ID, p.SEQ, p.Data[:16])
+	data := p.Data
+	if len(data) > 16 {
+		data = data[:16]
+	}
+	return fmt.Sprintf("Id=%d,Seq=%d,Data=%s", p.ID, p.SEQ, data)
 }
 
 func (p *icmpEcho) Len() int {
@@ -253,7 +257,7 @@ func Pinger(host_name string, count int, size int, timeout time.Duration) (bool,
 	var sendN int64 = 0  //发送次数
 	var recvN int64 = 0  //接收次数
 	var lostN int = 0    //超时次数
-	var shortT int64 = 0 //最短返回时间
+	var shortT int64 = -1 //最短返回时间
 	var longT int64 = -1 //最长返回时间
 	var sumT int64 = 0   //总计返时时间
 
@@ -268,7 +272,7 @@ func Pinger(host_name string, count int, size int, timeout time.Duration) (bool,
 			sumT += endduration
 
 			recvN++
-			if shortT > endduration {
+			if shortT < 0 || shortT > endduration {
 				shortT = endduration
 			}
 			if longT < endduration {
@@ -282,9 +286,12 @@ func Pinger(host_name string, count int, size int, timeout time.Duration) (bool,
 	}
 	result.Domain = host_name
 	result.IPAddr = ip_str
-	result.DelayShort = float64(shortT) / 1000000.0
-	result.DelayLong = float64(longT) / 1000000.0
-	result.DelayAverage = float64(sumT) / 1000000.0 / float64(recvN)
+	//全部丢包时 recvN==0，避免除零得到 NaN/Inf，且各时延保持为 0
+	if recvN > 0 {
+		result.DelayShort = float64(shortT) / 1000000.0
+		result.DelayLong = float64(longT) / 1000000.0
+		result.DelayAverage = float64(sumT) / 1000000.0 / float64(recvN)
+	}
 	result.Lost = lostN
 
 	return recvN > 0, &result, out_err
