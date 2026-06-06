@@ -265,7 +265,7 @@ func (w *Watcher) removeWatch(path string) error {
 	defer w.mu.Unlock()
 	watch, ok := w.watches[path]
 	if !ok {
-		return fmt.Errorf("can't remove non-existent inotify watch for: %s", path))
+		return fmt.Errorf("can't remove non-existent inotify watch for: %s", path)
 	}
 	success, errno := syscall.InotifyRmWatch(w.fd, watch.wd)
 	if success == -1 {
