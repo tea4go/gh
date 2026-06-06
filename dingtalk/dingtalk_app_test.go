@@ -9,10 +9,13 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	logs "github.com/tea4go/gh/log4go"
+	"github.com/tea4go/gh/utils"
 	"gopkg.in/ffmt.v1"
 )
 
 var app *TDingTalkApp
+
+var hasCredentials bool
 
 func TestMain(m *testing.M) {
 	logs.SetFDebug(false)
@@ -20,15 +23,24 @@ func TestMain(m *testing.M) {
 	clientID := os.Getenv("DINGTALK_Client_ID")
 	clientSecret := os.Getenv("DINGTALK_Client_Secret")
 	corpId := os.Getenv("DINGTALK_Corp_ID")
+	hasCredentials = clientID != "" && clientSecret != "" && corpId != ""
 	app = GetDingTalkApp(clientID, clientSecret, corpId, "615063230")
-	logs.Debug("clientID = %s", clientID)
-	logs.Debug("clientSecret = %s", clientSecret)
+	logs.Debug("clientID = %s", utils.GetShowKey(clientID))
+	logs.Debug("clientSecret = %s", utils.GetShowPassword(clientSecret))
 	logs.Debug("corpId = %s", corpId)
 	logs.Debug("agent_id = %s", app.agent_id)
 	m.Run()
 }
 
+func skipIfNoCredentials(t *testing.T) {
+	t.Helper()
+	if !hasCredentials {
+		t.Skip("Skipping: requires DINGTALK_Client_ID, DINGTALK_Client_Secret, DINGTALK_Corp_ID env vars")
+	}
+}
+
 func TestGetAccessToken(t *testing.T) {
+	skipIfNoCredentials(t)
 	pkey, err := app.GetAccessToken()
 	if err != nil {
 		t.Fatalf("获取 AccessToken 出错: %v", err)
@@ -38,6 +50,7 @@ func TestGetAccessToken(t *testing.T) {
 }
 
 func TestGetConfig(t *testing.T) {
+	skipIfNoCredentials(t)
 	fmt.Println(app.String())
 	nonceStr := "123456"
 	url := "http://localhost:8080"
@@ -51,6 +64,7 @@ func TestGetConfig(t *testing.T) {
 }
 
 func TestGetJSAPITicket(t *testing.T) {
+	skipIfNoCredentials(t)
 	pkey, err := app.GetJSAPITicket()
 	if err != nil {
 		t.Fatalf("获取 JsapiTicket 出错: %v", err)
@@ -60,6 +74,7 @@ func TestGetJSAPITicket(t *testing.T) {
 }
 
 func TestGetOpenConversationIDByChatID(t *testing.T) {
+	skipIfNoCredentials(t)
 	chatID := strings.TrimSpace("chatb16e8c26be59e0212e9fa829970ac6a9")
 	if chatID == "" {
 		t.Skip("skip without DINGTALK_TEST_CHAT_ID")
@@ -90,6 +105,7 @@ func printReportDept(t *testing.T, dept *TDDV2ReportDept, indent string) {
 }
 
 func TestGetV2ReportUsers(t *testing.T) {
+	skipIfNoCredentials(t)
 	report, err := app.GetV2ReportUsers("392")
 	if err != nil {
 		t.Fatalf("获取报表用户出错: %v", err)
@@ -105,6 +121,7 @@ func TestGetV2ReportUsers(t *testing.T) {
 }
 
 func TestGetV2UserInfo(t *testing.T) {
+	skipIfNoCredentials(t)
 	user, err := app.GetV2UserInfo("201")
 	if err != nil {
 		t.Fatalf("获取用户信息出错: %v", err)
@@ -114,6 +131,7 @@ func TestGetV2UserInfo(t *testing.T) {
 }
 
 func TestGetV2Department(t *testing.T) {
+	skipIfNoCredentials(t)
 	//  [
 	// 	668891974,
 	// 	920096052,
@@ -129,6 +147,7 @@ func TestGetV2Department(t *testing.T) {
 }
 
 func TestGetV2LoginInfo(t *testing.T) {
+	skipIfNoCredentials(t)
 	_, err := app.GetV2LoginInfo("authcode123")
 
 	if err != nil && !strings.Contains(err.Error(), "不存在的临时授权码") {
@@ -139,6 +158,7 @@ func TestGetV2LoginInfo(t *testing.T) {
 }
 
 func TestSendWorkNotify(t *testing.T) {
+	skipIfNoCredentials(t)
 	taskId, err := app.SendWorkNotify("201", `{"msgtype":"text","text":{"content":"hello 1234"}}`)
 	if err != nil {
 		t.Fatalf("发送工作通知出错: %v", err)
@@ -147,6 +167,7 @@ func TestSendWorkNotify(t *testing.T) {
 }
 
 func TestGetOrgName(t *testing.T) {
+	skipIfNoCredentials(t)
 	name, err := app.GetOrgName("201")
 	if err != nil {
 		t.Fatalf("获取组织名称出错: %v", err)
@@ -155,6 +176,7 @@ func TestGetOrgName(t *testing.T) {
 }
 
 func TestGetJobName(t *testing.T) {
+	skipIfNoCredentials(t)
 	name, err := app.GetJobName("201")
 	if err != nil {
 		t.Fatalf("获取职位名称出错: %v", err)
@@ -163,6 +185,7 @@ func TestGetJobName(t *testing.T) {
 }
 
 func TestGetFullDeptName(t *testing.T) {
+	skipIfNoCredentials(t)
 	full, err := app.GetFullDeptName(919894208)
 	if err != nil {
 		t.Fatalf("获取完整部门名称出错: %v", err)
@@ -171,6 +194,7 @@ func TestGetFullDeptName(t *testing.T) {
 }
 
 func TestGetDeptUsers(t *testing.T) {
+	skipIfNoCredentials(t)
 	users, err := app.GetDeptUsers(920096052)
 	if err != nil {
 		t.Fatalf("获取部门用户出错: %v", err)
@@ -182,6 +206,7 @@ func TestGetDeptUsers(t *testing.T) {
 }
 
 func TestGetSubDepts(t *testing.T) {
+	skipIfNoCredentials(t)
 	depts, err := app.GetSubDepts(920096052)
 	if err != nil {
 		t.Fatalf("获取子部门列表出错: %v", err)
@@ -198,6 +223,7 @@ func TestGetSubDepts(t *testing.T) {
 }
 
 func TestGetSubDeptIds(t *testing.T) {
+	skipIfNoCredentials(t)
 	depts, err := app.GetSubDepts(919894208)
 	if err != nil {
 		t.Fatalf("获取子部门列表出错: %v", err)
@@ -232,6 +258,7 @@ func TestGetSubDeptIds(t *testing.T) {
 }
 
 func TestGetV2UserInfoByPhone(t *testing.T) {
+	skipIfNoCredentials(t)
 	userinfo, err := app.GetV2UserInfoByPhone("18008445233")
 	if err != nil {
 		t.Fatalf("获取用户出错: %v", err)
@@ -241,6 +268,7 @@ func TestGetV2UserInfoByPhone(t *testing.T) {
 }
 
 func TestGetV2UserInfoByUnionId(t *testing.T) {
+	skipIfNoCredentials(t)
 	userinfo, err := app.GetV2UserInfoByUnionId("dxUDiP03drHsiE")
 	if err != nil {
 		t.Fatalf("获取用户出错: %v", err)
@@ -249,6 +277,7 @@ func TestGetV2UserInfoByUnionId(t *testing.T) {
 }
 
 func TestGetV2UsersByName(t *testing.T) {
+	skipIfNoCredentials(t)
 	users, err := app.GetV2UsersByName("蒋靖昊")
 	if err != nil {
 		t.Fatalf("查询用户名出错: %v", err)
@@ -274,6 +303,7 @@ func TestGetV2UsersByName(t *testing.T) {
 }
 
 func TestGetV2ReportList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportList, err := app.GetV2ReportList("201", "2026-02-19", "2026-03-19")
 	if err != nil {
 		t.Fatalf("查询用户日志出错: %v", err)
@@ -291,6 +321,7 @@ func TestGetV2ReportList(t *testing.T) {
 }
 
 func TestGetV2ReportSimpleList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportList, err := app.GetV2ReportSimpleList("1795", "2026-01-01", "2026-02-19")
 	if err != nil {
 		t.Fatalf("查询用户日志摘要出错: %v", err)
@@ -305,6 +336,7 @@ func TestGetV2ReportSimpleList(t *testing.T) {
 }
 
 func TestGetV2ReportTemplateList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportList, err := app.GetV2ReportTemplateList("201")
 	if err != nil {
 		t.Fatalf("查询用户日志模板出错: %v", err)
@@ -321,6 +353,7 @@ func TestGetV2ReportTemplateList(t *testing.T) {
 
 // TestGetV2ReportListEndTime 验证 end_time 包含当天数据（修复前 end_time=2026-03-19 实际为 00:00:00，丢失当天数据）
 func TestGetV2ReportListEndTime(t *testing.T) {
+	skipIfNoCredentials(t)
 	// 用许伟(userId=7318)的本周数据验证：他 4月11日 提交了日志，end_time=4月12日 应能查到 4月11日 的日志
 	reportList, err := app.GetV2ReportList("7318", "2026-04-06", "2026-04-12")
 	if err != nil {
@@ -343,6 +376,7 @@ func TestGetV2ReportListEndTime(t *testing.T) {
 
 // TestGetV2ReportSimpleListPagination 验证分页逻辑：跨页数据合并后时间单调递减
 func TestGetV2ReportSimpleListPagination(t *testing.T) {
+	skipIfNoCredentials(t)
 	// 用何永进(userId=1795)的 3 个月数据，预期超过 20 条，触发分页
 	reportList, err := app.GetV2ReportSimpleList("1795", "2025-12-01", "2026-03-31")
 	if err != nil {
@@ -366,6 +400,7 @@ func TestGetV2ReportSimpleListPagination(t *testing.T) {
 
 // TestGetV2ReportTemplateListNoDeadLoop 验证模板列表分页不会死循环
 func TestGetV2ReportTemplateListNoDeadLoop(t *testing.T) {
+	skipIfNoCredentials(t)
 	start := time.Now()
 	reportList, err := app.GetV2ReportTemplateList("201")
 	elapsed := time.Since(start)
@@ -389,6 +424,7 @@ func TestGetV2ReportTemplateListNoDeadLoop(t *testing.T) {
 }
 
 func TestGetV2ReportTemplate(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportList, err := app.GetV2ReportTemplate("37079", "个人周报")
 	if err != nil {
 		t.Fatalf("查询用户日志模板出错: %v", err)
@@ -429,6 +465,7 @@ func assertUserIDList(t *testing.T, name string, userIDs []string) {
 }
 
 func TestGetV2ReportReadUserList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportID := getTestReportID(t)
 
 	userIDs, err := app.GetV2ReportReadUserList(reportID)
@@ -442,6 +479,7 @@ func TestGetV2ReportReadUserList(t *testing.T) {
 }
 
 func TestGetV2ReportCommentUserList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportID := getTestReportID(t)
 
 	userIDs, err := app.GetV2ReportCommentUserList(reportID)
@@ -455,6 +493,7 @@ func TestGetV2ReportCommentUserList(t *testing.T) {
 }
 
 func TestGetV2ReportLikeUserList(t *testing.T) {
+	skipIfNoCredentials(t)
 	reportID := getTestReportID(t)
 
 	userIDs, err := app.GetV2ReportLikeUserList(reportID)
@@ -468,6 +507,7 @@ func TestGetV2ReportLikeUserList(t *testing.T) {
 }
 
 func TestCreateV2Report(t *testing.T) {
+	skipIfNoCredentials(t)
 	a_text := `
 `
 	b_text := `

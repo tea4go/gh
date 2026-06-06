@@ -1,6 +1,6 @@
 module github.com/tea4go/gh
 
-go 1.20
+go 1.21
 
 require (
 	github.com/chai2010/webp v1.1.1
@@ -69,6 +69,7 @@ require (
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-sqlite3 v1.14.45 // indirect
 	github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118 // indirect
 	github.com/mdlayher/packet v1.0.0 // indirect
 	github.com/mdlayher/socket v0.2.1 // indirect
