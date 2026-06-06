@@ -235,6 +235,21 @@ func (p *TPinger) PingServer() {
 	}
 }
 
+// FormatDuration 按自动单位格式化时长，保留 2 位小数。
+// 单位选取与 time.Duration.String() 一致（ns/µs/ms/s），但避免过多的小数位。
+func FormatDuration(d time.Duration) string {
+	switch {
+	case d < time.Microsecond:
+		return fmt.Sprintf("%dns", d.Nanoseconds())
+	case d < time.Millisecond:
+		return fmt.Sprintf("%.2fµs", float64(d)/float64(time.Microsecond))
+	case d < time.Second:
+		return fmt.Sprintf("%.2fms", float64(d)/float64(time.Millisecond))
+	default:
+		return fmt.Sprintf("%.2fs", float64(d)/float64(time.Second))
+	}
+}
+
 func (p *TPinger) Summarize() {
 	const tpl = `
 Ping statistics for %s
@@ -246,7 +261,7 @@ Approximate trip times:
 	if p.total == 0 {
 		return
 	}
-	_, _ = fmt.Fprintf(p.out, tpl, p.url.String(), p.total, p.total-p.failedTotal, p.failedTotal, p.minDuration, p.maxDuration, p.totalDuration/time.Duration(p.total))
+	_, _ = fmt.Fprintf(p.out, tpl, p.url.String(), p.total, p.total-p.failedTotal, p.failedTotal, FormatDuration(p.minDuration), FormatDuration(p.maxDuration), FormatDuration(p.totalDuration/time.Duration(p.total)))
 }
 
 func (p *TPinger) SetResult(st *TStats) {
@@ -271,10 +286,10 @@ func (p *TPinger) SetResult(st *TStats) {
 
 	if st.Error != nil {
 		_, _ = fmt.Fprintf(p.out, "Ping %s (%s) %s(%s) - time=%-10s dns=%-9s",
-			p.url.String(), st.Address, status, FormatError(st.Error), st.Duration.String(), st.DNSDuration)
+			p.url.String(), st.Address, status, FormatError(st.Error), FormatDuration(st.Duration), FormatDuration(st.DNSDuration))
 	} else {
 		_, _ = fmt.Fprintf(p.out, "Ping %s (%s) %s - time=%-10s dns=%-9s",
-			p.url.String(), st.Address, status, st.Duration.String(), st.DNSDuration)
+			p.url.String(), st.Address, status, FormatDuration(st.Duration), FormatDuration(st.DNSDuration))
 	}
 	if len(st.Meta) > 0 {
 		_, _ = fmt.Fprintf(p.out, " %s", st.FormatMeta())
