@@ -9,8 +9,14 @@
 #   ./run_tests.sh --html       # 生成 HTML 覆盖率报告到 cover.html
 #
 # 环境变量:
-#   CGO_ENABLED   默认 1（image 包需要 cgo）
+#   CGO_ENABLED    默认 1（image 包需要 cgo）
 #   GO_TEST_FLAGS  额外的 go test 参数
+#
+# .env 文件:
+#   脚本会自动加载项目根目录的 .env 文件（已 gitignore）。
+#   首次使用请复制 .env.example 为 .env 并填入真实值：
+#     cp .env.example .env
+#   填入钉钉/微信等凭证后，对应包的测试会自动启用（否则 Skip）。
 #
 
 set -euo pipefail
@@ -53,6 +59,22 @@ info()  { echo -e "${BLUE}[INFO]${RST}  $*"; }
 ok()    { echo -e "${GREEN}[PASS]${RST}  $*"; }
 warn()  { echo -e "${YELLOW}[WARN]${RST}  $*"; }
 fail()  { echo -e "${RED}[FAIL]${RST}  $*"; }
+
+# ─── 加载 .env ─────────────────────────────────────────────────────────────
+if [ -f "$ROOT_DIR/.env" ]; then
+    info "加载 .env 文件"
+    while IFS='=' read -r key value; do
+        [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        key=$(echo "$key" | xargs)
+        value=$(echo "$value" | xargs)
+        if [ -z "${!key:-}" ]; then
+            export "$key=$value"
+        fi
+    done < "$ROOT_DIR/.env"
+else
+    info "未找到 .env 文件（外部服务依赖的测试将 Skip）"
+    info "如需启用: cp .env.example .env && 编辑 .env 填入凭证"
+fi
 
 # ─── 1. 编译检查 ───────────────────────────────────────────────────────────
 info "编译检查 go build ./..."
