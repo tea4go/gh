@@ -21,7 +21,7 @@ func TestMain(m *testing.M) {
 
 func Test_CombinedOutput(t *testing.T) {
 	//cmd := CommandString("/opt/bin/rebootex")
-	cmd := CommandString(`ipconfig|findstr IPv4 `)
+	cmd := CommandString(`ifconfig|grep inet `)
 	//cmd := CommandString("ping -c 5 -i 1 192.168.50.1")
 	//cmd := Command("ping", "127.0.0.1", "-c 2", "-i 1")
 	//cmd := exec.Command("./cmd_demo/cmd_demo", "err")
