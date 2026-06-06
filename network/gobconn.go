@@ -145,29 +145,31 @@ var (
 	ptrMap = make(map[string]*sync.Pool)
 )
 
-func getPointer(typ reflect.Type) reflect.Value {
-	p, ok := ptrMap[typ.String()]
-	if ok {
-		if value, ok := p.Get().(reflect.Value); ok {
-			return value
-		}
-		return reflect.New(typ)
-	}
+// getPool 按类型名获取对应的对象池，不存在则原子地创建。
+// ptrMap 的所有访问都必须在 lock 内完成：此前 getPointer/putPointer 在锁外读 ptrMap，
+// 与锁内的写并发会触发 fatal error: concurrent map read and write。
+func getPool(name string) *sync.Pool {
 	lock.Lock()
-	ptrMap[typ.String()] = new(sync.Pool)
-	lock.Unlock()
+	defer lock.Unlock()
+	p, ok := ptrMap[name]
+	if !ok {
+		p = new(sync.Pool)
+		ptrMap[name] = p
+	}
+	return p
+}
+
+func getPointer(typ reflect.Type) reflect.Value {
+	p := getPool(typ.String())
+	if value, ok := p.Get().(reflect.Value); ok {
+		return value
+	}
 	return reflect.New(typ)
 }
 
 func putPointer(value reflect.Value) {
 	elem := value.Elem().Type()
-	p, ok := ptrMap[elem.String()]
-	if !ok {
-		lock.Lock()
-		p = new(sync.Pool)
-		ptrMap[elem.String()] = p
-		lock.Unlock()
-	}
+	p := getPool(elem.String())
 	// zero the value safely
 	value.Elem().Set(reflect.Zero(elem))
 	p.Put(value)
