@@ -1,0 +1,35 @@
+[
+    {
+        "label": "Go Debug 调试当前文件",
+        "adapter": "Delve",
+        "request": "launch",
+        "mode": "debug",
+        "args": ["user", "201"],
+        "program": "$ZED_FILE",
+        "buildFlags": "-gcflags='-N -l'"
+    },
+    {
+        "label": "Go Debug 调试当前包",
+        "adapter": "Delve",
+        "request": "launch",
+        "mode": "debug",
+        "program": ".",
+        "buildFlags": "-gcflags='-N -l'"
+    },
+    {
+        "label": "Go Test 测试当前文件",
+        "adapter": "Delve",
+        "request": "launch",
+        "mode": "test",
+        "program": "$ZED_FILE",
+        "buildFlags": "-gcflags='-N -l'"
+    },
+    {
+        "label": "Go Test 测试当前包",
+        "adapter": "Delve",
+        "request": "launch",
+        "mode": "test",
+        "program": ".",
+        "buildFlags": "-gcflags='-N -l'"
+    }
+]
