@@ -200,6 +200,9 @@ func main() {
 推送TAG命令
 
 ```
+# 查看最近 5 个标签
+git tag --sort=-creatordate  -l --format='%(refname:short) %(creatordate:short) %(subject)'| head -5
+
 git tag -a v1.3.4 -m "v1.3.4"
 git push origin --tags
 ```
