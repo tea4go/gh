@@ -508,7 +508,7 @@ func (Self *TDingTalkApp) GetAccessToken() (string, error) {
 	var info TAccessToken
 	err := req.ToJSON(&info)
 	if err != nil {
-		return "", errors.New("获取钉钉临时令牌失败！")
+		return "", errors.New("获取钉钉临时令牌失败，" + utils.GetNetError(err))
 	}
 	if info.ErrCode == 0 {
 		info.ExpiresIn = 7200

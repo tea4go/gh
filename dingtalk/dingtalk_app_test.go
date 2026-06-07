@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -20,51 +19,8 @@ var app *TDingTalkApp
 
 var hasCredentials bool
 
-// loadDotEnv 从项目根目录的 .env 文件加载环境变量（仅补充未设置的变量）
-// 这样即使不手动 source .env，go test 也能正确读取凭证
-func loadDotEnv() {
-	// 向上查找 .env 文件（支持在子目录中运行 go test）
-	dir, _ := os.Getwd()
-	for {
-		p := filepath.Join(dir, ".env")
-		if _, err := os.Stat(p); err == nil {
-			data, err := os.ReadFile(p)
-			if err != nil {
-				return
-			}
-			for _, line := range strings.Split(string(data), "\n") {
-				line = strings.TrimSpace(line)
-				if line == "" || strings.HasPrefix(line, "#") {
-					continue
-				}
-				// 去除 export 前缀
-				line = strings.TrimPrefix(line, "export ")
-				line = strings.TrimSpace(line)
-				parts := strings.SplitN(line, "=", 2)
-				if len(parts) != 2 {
-					continue
-				}
-				key := strings.TrimSpace(parts[0])
-				value := strings.TrimSpace(parts[1])
-				// 去除引号
-				value = strings.Trim(value, "\"'")
-				// 仅在环境变量未设置时才注入（shell 环境变量优先级更高）
-				if os.Getenv(key) == "" && value != "" {
-					os.Setenv(key, value)
-				}
-			}
-			return
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-}
-
 func TestMain(m *testing.M) {
-	loadDotEnv()
+	utils.LoadDotEnv()
 	logs.SetFDebug(false)
 	logs.SetLogger("console", `{"color":true,"level":7}`)
 	clientID := os.Getenv("DINGTALK_Client_ID")
@@ -72,7 +28,7 @@ func TestMain(m *testing.M) {
 	corpId := os.Getenv("DINGTALK_Corp_ID")
 	agentId := os.Getenv("DINGTALK_Agent_ID")
 	logs.Debug("clientID = %s", utils.GetShowKey(clientID))
-	logs.Debug("clientSecret = %s", utils.GetShowPassword(clientSecret))
+	logs.Debug("clientSecret = %s", utils.GetShowKey(clientSecret))
 	logs.Debug("corpId = %s", utils.GetShowKey(corpId))
 	logs.Debug("agent_id = %s", agentId)
 	hasCredentials = clientID != "" && clientSecret != "" && corpId != ""

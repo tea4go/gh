@@ -816,6 +816,47 @@ func getClassName(func_name string) string {
 	return result
 }
 
+// LoadDotEnv 从当前目录向上逐级查找 .env 文件并加载环境变量（仅补充未设置的变量）
+// 这样即使不手动 source .env，go test 也能正确读取凭证
+func LoadDotEnv() {
+	dir, err := os.Getwd()
+	if err != nil {
+		return
+	}
+	for {
+		p := filepath.Join(dir, ".env")
+		if data, err := os.ReadFile(p); err == nil {
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.HasPrefix(line, "#") {
+					continue
+				}
+				// 去除 export 前缀
+				line = strings.TrimPrefix(line, "export ")
+				line = strings.TrimSpace(line)
+				parts := strings.SplitN(line, "=", 2)
+				if len(parts) != 2 {
+					continue
+				}
+				key := strings.TrimSpace(parts[0])
+				value := strings.TrimSpace(parts[1])
+				// 去除引号
+				value = strings.Trim(value, "\"'")
+				// 仅在环境变量未设置时才注入（shell 环境变量优先级更高）
+				if os.Getenv(key) == "" && value != "" {
+					os.Setenv(key, value)
+				}
+			}
+			return
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+}
+
 var LineEnding string // 根据系统自动设置
 
 func init() {

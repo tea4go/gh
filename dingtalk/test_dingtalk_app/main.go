@@ -14,6 +14,7 @@ import (
 	dingtalk "github.com/tea4go/gh/dingtalk"
 	logs "github.com/tea4go/gh/log4go"
 	"github.com/tea4go/gh/network"
+	"github.com/tea4go/gh/utils"
 )
 
 // 标准程序块
@@ -27,6 +28,7 @@ var clientID string
 var clientSecret string
 var corpId string
 var agentId string
+var proxy string
 
 func initApp() {
 	if clientID == "" || clientSecret == "" {
@@ -45,15 +47,25 @@ func initApp() {
 	logs.StartLogger()
 	network.StartSelfUpdate("http://wc192.yj2025.icu:8118", "http://nj.yj2025.icu:23432", "http://wc8.yj2025.icu:8118", "http://wc47.yj2025.icu:23431")
 	// 标准程序块
+	logs.Debug("clientID = %s", utils.GetShowKey(clientID))
+	logs.Debug("clientSecret = %s", utils.GetShowKey(clientSecret))
+	logs.Debug("corpId = %s", utils.GetShowKey(corpId))
+	logs.Debug("agent_id = %s", agentId)
 
 	app = dingtalk.GetDingTalkApp(clientID, clientSecret, corpId, agentId)
 
-	proxyURL, _ := url.Parse("http://192.168.190.163:32121")
-	httpTransport := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
+	if proxy != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err != nil {
+			fmt.Printf("错误: 代理地址格式无效: %v\n", err)
+			os.Exit(1)
+		}
+		httpTransport := &http.Transport{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+		app.SetTransport(httpTransport)
+		logs.Debug("proxy = %s", proxy)
 	}
-
-	app.SetTransport(httpTransport)
 }
 
 func printJSON(v interface{}) {
@@ -106,15 +118,19 @@ func usage() {
 }
 
 func main() {
+	utils.LoadDotEnv()
 	clientID = os.Getenv("DINGTALK_Client_ID")
 	clientSecret = os.Getenv("DINGTALK_Client_Secret")
 	corpId = os.Getenv("DINGTALK_Corp_ID")
 	agentId = os.Getenv("DINGTALK_Agent_ID")
 
+	proxy = os.Getenv("DINGTALK_Proxy")
+
 	flag.StringVar(&clientID, "client-id", clientID, "DingTalk Client ID (AppKey)")
 	flag.StringVar(&clientSecret, "client-secret", clientSecret, "DingTalk Client Secret (AppSecret)")
 	flag.StringVar(&corpId, "corp-id", corpId, "DingTalk Corp ID")
 	flag.StringVar(&agentId, "agent-id", agentId, "DingTalk Agent ID")
+	flag.StringVar(&proxy, "proxy", proxy, "HTTP proxy URL (e.g. http://host:port)")
 
 	flag.Parse()
 	positionalArgs := flag.Args()
