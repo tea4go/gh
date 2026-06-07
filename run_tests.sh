@@ -4,9 +4,12 @@
 #
 # 用法:
 #   ./run_tests.sh              # 默认：测试 + 覆盖率 + 汇总报告
+#   ./run_tests.sh dingtalk     # 只测试 dingtalk 包
+#   ./run_tests.sh utils syslog # 只测试 utils 和 syslog 包
 #   ./run_tests.sh --race       # 额外启用 race 检测
 #   ./run_tests.sh --quick      # 跳过覆盖率，仅跑测试
 #   ./run_tests.sh --html       # 生成 HTML 覆盖率报告到 cover.html
+#   ./run_tests.sh dingtalk --quick  # 只测试 dingtalk，跳过覆盖率
 #
 # 环境变量:
 #   CGO_ENABLED    默认 1（image 包需要 cgo）
@@ -22,8 +25,8 @@
 set -euo pipefail
 
 # ─── 颜色 ──────────────────────────────────────────────────────────────────
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'
-BLUE='\033[0;34m'; BOLD='\033[1m'; RST='\033[0m'
+RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[0;33m'
+BLUE=$'\033[0;34m'; BOLD=$'\033[1m'; RST=$'\033[0m'
 
 # ─── 配置 ──────────────────────────────────────────────────────────────────
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -38,6 +41,7 @@ COVER_THRESHOLD=90          # 目标覆盖率 %
 RACE_MODE=false
 QUICK_MODE=false
 HTML_MODE=false
+FILTER_PKGS=()              # 指定测试的包列表
 
 # ─── 参数解析 ──────────────────────────────────────────────────────────────
 for arg in "$@"; do
@@ -46,11 +50,15 @@ for arg in "$@"; do
         --quick) QUICK_MODE=true ;;
         --html)  HTML_MODE=true  ;;
         -h|--help)
-            head -15 "$0" | grep '^#' | sed 's/^# \?//'
+            head -20 "$0" | grep '^#' | sed 's/^# \?//'
             exit 0
             ;;
-        *)
+        -*)
             echo -e "${RED}未知参数: $arg${RST}" >&2; exit 1 ;;
+        *)
+            # 非选项参数视为包名
+            FILTER_PKGS+=("$arg")
+            ;;
     esac
 done
 
@@ -63,10 +71,15 @@ fail()  { echo -e "${RED}[FAIL]${RST}  $*"; }
 # ─── 加载 .env ─────────────────────────────────────────────────────────────
 if [ -f "$ROOT_DIR/.env" ]; then
     info "加载 .env 文件"
-    while IFS='=' read -r key value; do
+    while IFS='=' read -r key value || [ -n "$key" ]; do
+        # 跳过空行和注释
         [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]] && continue
+        # 去除 key/value 的前后空白和引号
         key=$(echo "$key" | xargs)
-        value=$(echo "$value" | xargs)
+        value=$(echo "$value" | xargs | sed 's/^"//;s/"$//')
+        # 跳过空 key 或空 value
+        [[ -z "$key" || -z "$value" ]] && continue
+        # 只有未设置时才 export（命令行优先级更高）
         if [ -z "${!key:-}" ]; then
             export "$key=$value"
         fi
@@ -131,6 +144,31 @@ for p in log4go/testlog/conn/client log4go/testlog/conn/server \
     PKG_GROUP["github.com/tea4go/gh/$p"]="辅助/示例"
 done
 
+# ─── 3b. 按指定包名过滤 ────────────────────────────────────────────────────
+if [ ${#FILTER_PKGS[@]} -gt 0 ]; then
+    FILTERED=()
+    for fp in "${FILTER_PKGS[@]}"; do
+        found=false
+        for pkg in "${ALL_PKGS[@]}"; do
+            short="${pkg#github.com/tea4go/gh/}"
+            # 支持短名（dingtalk）和完整包路径
+            if [ "$short" = "$fp" ] || [ "$pkg" = "$fp" ]; then
+                FILTERED+=("$pkg")
+                found=true
+                break
+            fi
+        done
+        if ! $found; then
+            warn "未找到包: $fp（已跳过）"
+        fi
+    done
+    ALL_PKGS=("${FILTERED[@]}")
+    if [ ${#ALL_PKGS[@]} -eq 0 ]; then
+        fail "没有匹配的包，退出"
+        exit 1
+    fi
+fi
+
 # ─── 4. 准备覆盖率目录 ────────────────────────────────────────────────────
 if ! $QUICK_MODE; then
     rm -rf "$COVERAGE_DIR"
@@ -141,8 +179,9 @@ fi
 info "开始全量测试（共 ${#ALL_PKGS[@]} 个包）"
 echo ""
 
-declare -A PKG_RESULT   # pkg -> PASS/FAIL/SKIP
-declare -A PKG_COVERAGE # pkg -> 覆盖率字符串
+declare -A PKG_RESULT      # pkg -> PASS/FAIL/SKIP
+declare -A PKG_COVERAGE    # pkg -> 覆盖率字符串
+declare -A PKG_FAIL_TESTS  # pkg -> 失败的测试函数列表（逗号分隔）
 FAIL_PKGS=()
 TOTAL=0; PASS_N=0; FAIL_N=0; SKIP_N=0
 
@@ -175,7 +214,14 @@ for pkg in "${ALL_PKGS[@]}"; do
         FAIL_PKGS+=("$short")
         PKG_RESULT[$pkg]="FAIL"
         FAIL_N=$((FAIL_N + 1))
-        fail "$short"
+        # 提取失败的测试函数名
+        fail_tests=$(echo "$output" | grep -oP '^--- FAIL:\s+\K\S+' | tr '\n' ',' | sed 's/,$//')
+        PKG_FAIL_TESTS[$pkg]="$fail_tests"
+        if [ -n "$fail_tests" ]; then
+            fail "$short  ($fail_tests)"
+        else
+            fail "$short"
+        fi
     elif echo "$output" | grep -q "^ok"; then
         PKG_RESULT[$pkg]="PASS"
         PASS_N=$((PASS_N + 1))
@@ -257,7 +303,16 @@ for group_name in "纯逻辑" "接近目标" "外部依赖" "辅助/示例"; do
             cov_display="${YELLOW}N/A${RST}"
         fi
 
-        printf "  %s %-30s %s\n" "$tag" "$short" "$cov_display"
+        # 失败时附加失败函数名
+        fail_detail=""
+        if [ "$result" = "FAIL" ]; then
+            ft="${PKG_FAIL_TESTS[$pkg]}"
+            if [ -n "$ft" ]; then
+                fail_detail="  ($ft)"
+            fi
+        fi
+
+        printf "  %s %-30s %s%s\n" "$tag" "$short" "$cov_display" "$fail_detail"
     done
     echo ""
 done
@@ -291,7 +346,19 @@ fi
 if [ ${#FAIL_PKGS[@]} -gt 0 ]; then
     echo -e "${RED}${BOLD}失败包:${RST}"
     for p in "${FAIL_PKGS[@]}"; do
-        echo -e "  ${RED}✗ $p${RST}"
+        # 查找对应的完整包名以获取失败函数
+        fail_info=""
+        for pkg in "${ALL_PKGS[@]}"; do
+            short="${pkg#github.com/tea4go/gh/}"
+            if [ "$short" = "$p" ]; then
+                ft="${PKG_FAIL_TESTS[$pkg]}"
+                if [ -n "$ft" ]; then
+                    fail_info="  ($ft)"
+                fi
+                break
+            fi
+        done
+        echo -e "  ${RED}✗ $p${fail_info}${RST}"
     done
     echo ""
 fi
